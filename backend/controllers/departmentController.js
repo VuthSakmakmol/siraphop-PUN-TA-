@@ -1,3 +1,4 @@
+const { sendTelegramMessage } = require('../utils/telegram');
 const Department = require('../models/Department');
 const Counter = require('../models/Counter');
 
@@ -23,21 +24,22 @@ exports.getDepartmentById = async (req, res) => {
 
 exports.createDepartment = async (req, res) => {
   try {
-    const { name, type } = req.body
+    const { name, type } = req.body;
 
+    // Validation
     if (!name || !type) {
-      return res.status(400).json({ message: 'Name and type are required' })
+      return res.status(400).json({ message: 'Name and type are required' });
     }
 
-    // Check for duplicate
-    const exists = await Department.findOne({ name, type })
+    // Check for duplicates
+    const exists = await Department.findOne({ name, type });
     if (exists) {
-      return res.status(400).json({ message: 'Department already exists' })
+      return res.status(400).json({ message: 'Department already exists' });
     }
 
-    // Generate department ID
-    const count = await Department.countDocuments()
-    const departmentId = `DEPT-${String(count + 1).padStart(3, '0')}`
+    // Auto-generate Department ID
+    const count = await Department.countDocuments();
+    const departmentId = `DEPT-${String(count + 1).padStart(3, '0')}`;
 
     const department = await Department.create({
       name,
@@ -45,14 +47,19 @@ exports.createDepartment = async (req, res) => {
       departmentId,
       jobTitles: [],
       recruiters: []
-    })
+    });
 
-    res.status(201).json(department)
+    // ✅ Telegram Alert if type is White Collar
+    if (department.type === 'White Collar') {
+      await sendTelegramMessage(`✅ *White Collar Department Added*: "${department.name}"`);
+    }
+
+    res.status(201).json(department);
   } catch (err) {
-    console.error('Create error:', err)
-    res.status(500).json({ message: 'Server error' })
+    console.error('Create error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
 
 
 // Update department
@@ -144,4 +151,3 @@ exports.removeRecruiter = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message })
   }
 }
-
