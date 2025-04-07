@@ -29,22 +29,24 @@ exports.getJobRequisitions = async (req, res) => {
   }
 };
 
-
 exports.createJobRequisition = async (req, res) => {
   try {
     const {
-      departmentId, jobTitle, recruiter, targetCandidates,
-      hiringCost, status, openingDate, startDate
-    } = req.body
+      departmentId, jobTitle, recruiter,
+      targetCandidates, hiringCost, status,
+      openingDate, startDate
+    } = req.body;
 
-    if (!departmentId || !jobTitle || !recruiter || !status || !openingDate || !startDate) {
-      return res.status(400).json({ message: 'Missing required fields' })
+    // Validate required fields
+    if (!departmentId || !jobTitle || !recruiter || !status || !openingDate) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const count = await JobRequisition.countDocuments()
-    const jobRequisitionId = `JR-${String(count + 1).padStart(4, '0')}`
+    const count = await JobRequisition.countDocuments();
+    const jobRequisitionId = `JR-${String(count + 1).padStart(4, '0')}`;
 
-    const newJob = new JobRequisition({
+    // Create job requisition object
+    const jobData = {
       jobRequisitionId,
       departmentId,
       jobTitle,
@@ -52,35 +54,38 @@ exports.createJobRequisition = async (req, res) => {
       targetCandidates: parseInt(targetCandidates),
       hiringCost: parseFloat(hiringCost),
       status,
-      openingDate: moment.tz(openingDate, 'Asia/Phnom_Penh').toDate(),
-      startDate: moment.tz(startDate, 'Asia/Phnom_Penh').toDate()
-    })
+      openingDate: moment.tz(openingDate, 'Asia/Phnom_Penh').toDate()
+    };
 
-    await newJob.save()
+    // Optional: add startDate only if provided
+    if (startDate && startDate !== '') {
+      jobData.startDate = moment.tz(startDate, 'Asia/Phnom_Penh').toDate();
+    }
 
-    // ✅ Populate department name for alert
-    await newJob.populate('departmentId', 'name')
+    const newJob = new JobRequisition(jobData);
+    await newJob.save();
 
-    // ✅ Send Telegram alert
+    // ✅ Optional: Telegram alert here
     await sendTelegramMessage(
       `✅ *New Job Requisition Created:*\n` +
       `*Job ID:* ${jobRequisitionId}\n` +
-      `*Department:* ${newJob.departmentId?.name || '[Not Populated]'}\n` +
+      `*Department:* ${newJob.departmentId?.name || '[Unknown]'}\n` +
       `*Job Title:* ${jobTitle}\n` +
       `*Recruiter:* ${recruiter}\n` +
-      `*Target Candidates:* ${targetCandidates}\n` +
+      `*Target:* ${targetCandidates}\n` +
+      `*Hiring Cost:* $${hiringCost}\n` +
       `*Status:* ${status}\n` +
-      `*Hiring Cost:* ${hiringCost}$\n` +
       `*Opening Date:* ${openingDate}\n` +
-      `*Start Date:* ${startDate}`
-    )
+      (startDate ? `*Start Date:* ${startDate}` : '')
+    );
 
-    res.status(201).json(newJob)
+    res.status(201).json(newJob);
   } catch (err) {
-    console.error('Create Job Error:', err)
-    res.status(500).json({ message: 'Failed to create job requisition' })
+    console.error('Create Job Error:', err);
+    res.status(500).json({ message: 'Failed to create job requisition' });
   }
-}
+};
+
 
 
 // ✅ Get job requisition by ID

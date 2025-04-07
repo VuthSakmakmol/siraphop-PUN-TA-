@@ -10,7 +10,7 @@ const jobRequisitionSchema = new mongoose.Schema({
   hiringCost: { type: Number, default: 0 },
   status: { type: String, enum: ['Vacant', 'Suspended', 'Filled', 'Cancel'], default: 'Vacant' },
   openingDate: { type: Date, required: true },
-  startDate: { type: Date, required: true },
+  startDate: { type: Date, required: false },
   type: { type: String, default: 'White Collar' }
 }, { timestamps: true })
 
