@@ -1,6 +1,8 @@
 const moment = require('moment-timezone')
 const JobRequisition = require('../models/JobRequisition')
 const Department = require('../models/Department')
+const { sendTelegramMessage } = require('../utils/telegram');
+
 
 // ✅ Get job titles from White Collar departments
 exports.getWhiteCollarJobTitles = async (req, res) => {
@@ -55,6 +57,24 @@ exports.createJobRequisition = async (req, res) => {
     })
 
     await newJob.save()
+
+    // ✅ Populate department name for alert
+    await newJob.populate('departmentId', 'name')
+
+    // ✅ Send Telegram alert
+    await sendTelegramMessage(
+      `✅ *New Job Requisition Created:*\n` +
+      `*Job ID:* ${jobRequisitionId}\n` +
+      `*Department:* ${newJob.departmentId?.name || '[Not Populated]'}\n` +
+      `*Job Title:* ${jobTitle}\n` +
+      `*Recruiter:* ${recruiter}\n` +
+      `*Target Candidates:* ${targetCandidates}\n` +
+      `*Status:* ${status}\n` +
+      `*Hiring Cost:* ${hiringCost}$\n` +
+      `*Opening Date:* ${openingDate}\n` +
+      `*Start Date:* ${startDate}`
+    )
+
     res.status(201).json(newJob)
   } catch (err) {
     console.error('Create Job Error:', err)
