@@ -32,7 +32,9 @@ const routes = [
   { path: '/whitecollar/departments/:id', name: 'DepartmentDetail', component: DepartmentDetail, meta: { requiresAuth: true } },
   { path: '/whitecollar/requisitions', name: 'WhiteJobRequisition', component: JobRequisition, meta: { requiresAuth: true } },
   { path: '/whitecollar/candidates', name: 'WhiteCandidates', component: Candidates, meta: { requiresAuth: true } },
-
+  {
+    path: '/whitecollar/candidates/:id',name: 'WhiteCollarCandidateDetail',component: () => import('@/views/whitecollar/CandidateDetail.vue'),meta: { requiresAuth: true }},
+  
   // Blue Collar Routes
   { path: '/bluecollar/departments', name: 'BlueDepartments', component: BlueDepartment, meta: { requiresAuth: true } },
   { path: '/bluecollar/requisitions', name: 'BlueJobRequisition', component: BlueJobRequisition, meta: { requiresAuth: true } },

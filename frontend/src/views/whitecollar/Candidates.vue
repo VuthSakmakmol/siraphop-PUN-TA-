@@ -29,7 +29,15 @@
                 <v-select v-model="form.applicationSource" :items="['LinkedIn', 'Facebook', 'Referral', 'Agency']" label="Application Source" required />
               </v-col>
               <v-col cols="12" md="4">
-                <v-select v-model="form.jobRequisitionId" :items="jobRequisitions" item-title="jobRequisitionId" item-value="_id" label="Job Requisition" required />
+                <v-select
+                  v-model="form.jobRequisitionId"
+                  :items="jobRequisitions"
+                  item-title="jobRequisitionId"
+                  item-value="_id"
+                  label="Job Requisition"
+                  required
+                  :disabled="isEditMode && form.progress === 'JobOffer'"
+                />
               </v-col>
               <v-col cols="12" md="4">
                 <v-file-input multiple label="Upload Documents" @change="handleFileUpload" />
@@ -81,45 +89,49 @@
             <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
             <td>{{ c.fullName }}</td>
             <td>{{ c.gender }}</td>
-            <td :class="'step-application'">{{ formatDate(c.progressDates?.Application) || '-' }}</td>
+            <td>{{ formatDate(c.progressDates?.Application) || '-' }}</td>
 
-            <td :class="'step-manager'">
+            <!-- Manager Review -->
+            <td>
               <v-btn
                 :disabled="c.hireDecision === 'Not Hired' || c.progress === 'ManagerReview'"
                 @click="updateProgress(c._id, 'ManagerReview')"
                 size="small"
-                :class="['stage-btn', 'stage-manager', { 'grey--text': c.hireDecision === 'Not Hired' }]"
+                :style="{ backgroundColor: '#e3f2fd', color: '#000' }"
               >
                 {{ formatDate(c.progressDates?.ManagerReview) || 'Manager Review' }}
               </v-btn>
             </td>
 
-            <td :class="'step-interview'">
+            <!-- Interview -->
+            <td>
               <v-btn
                 :disabled="c.hireDecision === 'Not Hired' || c.progress === 'Interview'"
                 @click="updateProgress(c._id, 'Interview')"
                 size="small"
-                :class="['stage-btn', 'stage-interview', { 'grey--text': c.hireDecision === 'Not Hired' }]"
+                :style="{ backgroundColor: '#fce4ec', color: '#000' }"
               >
                 {{ formatDate(c.progressDates?.Interview) || 'Interview' }}
               </v-btn>
             </td>
 
-            <td :class="'step-offer'">
+            <!-- Job Offer -->
+            <td>
               <v-btn
                 @click="handleJobOfferClick(c)"
                 size="small"
-                :class="['stage-btn', 'stage-offer', { 'grey--text': c.hireDecision === 'Not Hired' }]"
+                :style="{ backgroundColor: '#fff3e0', color: '#000' }"
               >
                 {{ formatDate(c.progressDates?.JobOffer) || 'Job Offer' }}
               </v-btn>
             </td>
 
-            <td :class="'step-hired'">
+            <!-- Hired -->
+            <td>
               <v-btn
                 @click="handleHiredClick(c)"
                 size="small"
-                :class="['stage-btn', 'stage-hired', { 'grey--text': c.hireDecision === 'Not Hired' }]"
+                :style="{ backgroundColor: '#e8f5e9', color: '#000' }"
               >
                 {{ formatDate(c.progressDates?.Hired) || 'Hired' }}
               </v-btn>
@@ -127,14 +139,30 @@
 
             <td>{{ c.applicationSource }}</td>
             <td>{{ c.hireDecision }}</td>
+
             <td>
-              <v-btn color="blue" @click="viewDetails(c._id)">Details</v-btn>
-              <v-btn color="yellow" @click="editCandidate(c._id)">Edit</v-btn>
-              <v-btn color="red" @click="deleteCandidate(c._id)">Delete</v-btn>
+              <v-menu>
+                <template #activator="{ props }">
+                  <v-btn size="x-small" color="primary" v-bind="props" flat>
+                    Actions
+                  </v-btn>
+                </template>
+                <v-list>
+                  <v-list-item @click="viewDetails(c._id)">
+                    <v-list-item-title>Details</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="editCandidate(c._id)">
+                    <v-list-item-title>Edit</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item @click="deleteCandidate(c._id)">
+                    <v-list-item-title>Delete</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
             </td>
+
           </tr>
         </tbody>
-
       </v-table>
     </v-card>
   </v-container>
@@ -142,6 +170,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 
@@ -165,7 +194,14 @@ const filteredCandidates = ref([])
 const jobRequisitions = ref([])
 const globalSearch = ref('')
 const showForm = ref(false)
-const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired']
+// const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired']
+const isEditMode = ref(false);
+const editingCandidateId = ref(null);
+const router = useRouter()
+const viewDetails = (id) => {
+  router.push({ name: 'WhiteCollarCandidateDetail', params: { id } })
+}
+
 
 const fetchCandidates = async () => {
   const res = await axios.get('http://localhost:5000/api/candidates')
@@ -217,35 +253,50 @@ const handleHiredClick = async (c) => {
   updateProgress(c._id, 'Hired');
 };
 
-
-
 const handleSubmit = async () => {
   try {
     const formData = new FormData();
-
-    // Append all fields except documents
     for (const key in form.value) {
       if (key !== 'documents') {
         formData.append(key, form.value[key]);
       }
     }
 
-    // Ensure documents is an array and append them safely
     if (Array.isArray(form.value.documents)) {
       form.value.documents.forEach(doc => {
         formData.append('documents', doc);
       });
     }
 
-    await axios.post('http://localhost:5000/api/candidates', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    if (isEditMode.value) {
+      await axios.put(`http://localhost:5000/api/candidates/${editingCandidateId.value}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      Swal.fire('✅ Updated', 'Candidate updated successfully.', 'success');
+    } else {
+      await axios.post('http://localhost:5000/api/candidates', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      Swal.fire('✅ Created', `Candidate "${form.value.name}" was successfully added!`, 'success');
+    }
 
+    form.value = {
+      name: '', email: '', phone: '', gender: '', applicationSource: '',
+      jobRequisitionId: '', department: '', hireDecision: '',
+      progress: 'Application', progressDates: {}, noted: '', documents: []
+    };
+    isEditMode.value = false;
+    editingCandidateId.value = null;
+    showForm.value = false;
     fetchCandidates();
+
   } catch (error) {
-    console.error('Error while submitting candidate:', error);
+    console.error('Submit error:', error);
+    Swal.fire('❌ Error', 'Failed to submit candidate data', 'error');
   }
 };
+
+
 
 const updateProgress = async (candidateId, step) => {
   const confirm = await Swal.fire({
@@ -293,6 +344,50 @@ const filterCandidates = () => {
   filteredCandidates.value = list
 }
 
+const editCandidate = (id) => {
+  const candidate = candidates.value.find(c => c._id === id);
+  if (!candidate) return;
+
+  form.value = {
+    name: candidate.fullName,
+    email: candidate.email,
+    phone: candidate.phone,
+    gender: candidate.gender,
+    applicationSource: candidate.applicationSource,
+    jobRequisitionId: candidate.jobRequisitionId?._id || candidate.jobRequisitionId,
+    department: candidate.jobRequisitionId?.departmentId?.name || '',
+    hireDecision: candidate.hireDecision,
+    progress: candidate.progress,
+    progressDates: candidate.progressDates || {},
+    documents: [], // You can also load existing docs if needed
+  };
+
+  editingCandidateId.value = id;
+  isEditMode.value = true;
+  showForm.value = true;
+};
+
+const deleteCandidate = async (id) => {
+  const confirm = await Swal.fire({
+    title: 'Are you sure?',
+    text: 'This will permanently delete the candidate.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel'
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    await axios.delete(`http://localhost:5000/api/candidates/${id}`);
+    await fetchCandidates();
+    Swal.fire('🗑️ Deleted!', 'Candidate was removed.', 'success');
+  } catch (err) {
+    Swal.fire('❌ Error', 'Could not delete candidate.', 'error');
+  }
+};
+
 
 
 // const isJobOfferFilled = (jobRequisitionId) => {
@@ -326,10 +421,11 @@ onMounted(() => {
 
 /* Optional: make buttons smaller to fit in 1 row better */
 .v-btn {
-  min-width: 100px;
-  font-size: 0.75rem;
-  padding: 4px 8px;
+  font-size: 0.7rem;
+  padding: 3px 6px;
+  min-width: 80px;
 }
+
 
 /* Fix alignment of icons and tooltips */
 .v-icon {

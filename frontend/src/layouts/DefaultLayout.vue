@@ -22,7 +22,7 @@
     <v-list-group v-model="deptGroup" prepend-icon="mdi-office-building">
       <template #activator="{ props }">
         <v-list-item v-bind="props">
-          <v-list-item-title>Departments</v-list-item-title>
+          <v-list-item-title>Preference</v-list-item-title>
         </v-list-item>
       </template>
 
@@ -38,7 +38,7 @@
     <v-list-group v-model="requisitionGroup" prepend-icon="mdi-briefcase">
       <template #activator="{ props }">
         <v-list-item v-bind="props">
-          <v-list-item-title>Job Requisitions</v-list-item-title>
+          <v-list-item-title>Job Openings</v-list-item-title>
         </v-list-item>
       </template>
 

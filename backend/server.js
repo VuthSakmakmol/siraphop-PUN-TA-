@@ -12,6 +12,8 @@ seedAdmin();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
+
 
 // Correct path to candidateRoutes.js
 const candidateRoutes = require('./routes/candidateRoutes');  // Ensure correct relative path

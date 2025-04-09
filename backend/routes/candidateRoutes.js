@@ -1,18 +1,11 @@
+// routes/candidateRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const {
-  createCandidate,
-  getCandidates,
-  getCandidateById,
-  updateCandidateProgress,
-  deleteCandidate,
-  uploadMoreDocuments,
-  updateCandidate,
-  lockCandidateProgress
-} = require('../controllers/candidateController');
+const candidateController = require('../controllers/candidateController');
 
-// ✅ Multer configuration
+// ✅ Multer setup
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/candidates/');
@@ -22,18 +15,17 @@ const storage = multer.diskStorage({
     cb(null, `${uniqueSuffix}-${file.originalname}`);
   }
 });
-
 const upload = multer({ storage });
 
 // ✅ Routes
-router.get('/', getCandidates);
-router.get('/:id', getCandidateById);
-router.post('/', upload.array('documents'), createCandidate);
-router.put('/:id/progress', updateCandidateProgress);
-router.put('/:id', updateCandidate);
-router.put('/:id/lock', lockCandidateProgress);
-router.delete('/:id', deleteCandidate);
-router.post('/:id/documents', upload.array('documents'), uploadMoreDocuments);
+router.get('/', candidateController.getCandidates);
+router.get('/:id', candidateController.getCandidateById);
+router.post('/', upload.array('documents'), candidateController.createCandidate);
+router.put('/:id/progress', candidateController.updateCandidateProgress);
+router.put('/:id', upload.array('documents'), candidateController.updateCandidate); // ✅ Fixed
+router.put('/:id/lock', candidateController.lockCandidateProgress);
+router.delete('/:id', candidateController.deleteCandidate);
+router.post('/:id/documents', upload.array('documents'), candidateController.uploadMoreDocuments);
 
 // ✅ Export routes
 module.exports = router;

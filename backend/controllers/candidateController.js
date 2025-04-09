@@ -106,24 +106,43 @@ exports.getCandidateById = async (req, res) => {
     res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
-
-// ✅ Update candidate fields
 exports.updateCandidate = async (req, res) => {
   try {
-    const { hireDecision, noted } = req.body;
-    const candidate = await Candidate.findByIdAndUpdate(
-      req.params.id,
-      { hireDecision, noted },
-      { new: true }
-    );
+    const { name, email, phone, gender, applicationSource, jobRequisitionId, hireDecision } = req.body;
 
-    if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
-    res.json({ message: '✅ Candidate updated', candidate });
+    const updatedFields = {
+      fullName: name,
+      email,
+      phone,
+      gender,
+      applicationSource,
+      jobRequisitionId,
+      hireDecision,
+    };
 
+    // Handle file upload (optional)
+    if (req.files && req.files.length > 0) {
+      updatedFields.documents = req.files.map(file => ({
+        filename: file.filename,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        path: file.path
+      }));
+    }
+
+    const candidate = await Candidate.findByIdAndUpdate(req.params.id, updatedFields, { new: true });
+
+    if (!candidate) return res.status(404).json({ message: 'Candidate not found' });
+
+    res.status(200).json({ message: '✅ Candidate updated successfully', candidate });
   } catch (err) {
-    res.status(500).json({ message: '❌ Update failed', error: err.message });
+    console.error('❌ Update error:', err);
+    res.status(500).json({ message: '❌ Failed to update candidate', error: err.message });
   }
 };
+
+
 // ✅ Update candidate progress and filledCandidates in job requisition
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDates } = req.body;
@@ -183,16 +202,23 @@ exports.uploadMoreDocuments = async (req, res) => {
   }
 };
 
-// ✅ Delete candidate
+
+// controllers/candidateController.js
+
 exports.deleteCandidate = async (req, res) => {
   try {
-    const deleted = await Candidate.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: '❌ Candidate not found' });
-    res.json({ message: '🗑️ Candidate deleted' });
-  } catch (err) {
-    res.status(500).json({ message: '❌ Delete failed', error: err.message });
+    const candidate = await Candidate.findByIdAndDelete(req.params.id);
+    if (!candidate) {
+      return res.status(404).json({ message: '❌ Candidate not found' });
+    }
+
+    res.status(200).json({ message: '✅ Candidate deleted successfully' });
+  } catch (error) {
+    console.error('❌ Delete error:', error);
+    res.status(500).json({ message: '❌ Failed to delete candidate', error: error.message });
   }
 };
+
 
 // ✅ Lock/unlock progress
 exports.lockCandidateProgress = async (req, res) => {
