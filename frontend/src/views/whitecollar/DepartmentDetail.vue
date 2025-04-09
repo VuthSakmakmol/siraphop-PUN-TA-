@@ -9,7 +9,7 @@
       </div>
 
       <v-row>
-        <!-- ✅ Job Titles -->
+        <!-- Job Titles -->
         <v-col cols="12" md="6">
           <v-card outlined>
             <v-card-title>
@@ -41,7 +41,7 @@
           </v-card>
         </v-col>
 
-        <!-- ✅ Recruiters -->
+        <!-- Recruiters -->
         <v-col cols="12" md="6">
           <v-card outlined>
             <v-card-title>
@@ -90,19 +90,11 @@ const departmentId = route.params.id
 const jobTitles = ref([])
 const recruiters = ref([])
 
-// 👇 These will inject ID field
 const jobTitlesFormatted = computed(() =>
-  jobTitles.value.map((title, index) => ({
-    id: index + 1,
-    title
-  }))
+  jobTitles.value.map((title, index) => ({ id: index + 1, title }))
 )
-
 const recruitersFormatted = computed(() =>
-  recruiters.value.map((recruiter, index) => ({
-    id: index + 1,
-    recruiter
-  }))
+  recruiters.value.map((recruiter, index) => ({ id: index + 1, recruiter }))
 )
 
 const jobTitleHeaders = [
@@ -119,73 +111,87 @@ const recruiterHeaders = [
 
 const fetchDepartment = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/api/departments/${departmentId}`)
-    const data = res.data
-    jobTitles.value = Array.isArray(data.jobTitles) ? data.jobTitles : []
-    recruiters.value = Array.isArray(data.recruiters) ? data.recruiters : []
+    const res = await axios.get(`/api/departments/${departmentId}`)
+    jobTitles.value = res.data.jobTitles || []
+    recruiters.value = res.data.recruiters || []
   } catch (err) {
     Swal.fire('Error', 'Failed to load department data', 'error')
   }
 }
 
+
 const promptAdd = async (type) => {
   const { value } = await Swal.fire({
     title: `Add ${type === 'jobTitle' ? 'Job Title' : 'Recruiter'}`,
     input: 'text',
-    inputLabel: `Enter new ${type === 'jobTitle' ? 'title' : 'recruiter name'}`,
+    inputLabel: `Enter ${type === 'jobTitle' ? 'title' : 'recruiter name'}`,
     showCancelButton: true
-  })
+  });
 
   if (value?.trim()) {
-    const formatted = value.trim()
-    const list = type === 'jobTitle' ? jobTitles.value : recruiters.value
-    if (list.some(item => item.toLowerCase() === formatted.toLowerCase())) {
-      return Swal.fire('Duplicate', `${type === 'jobTitle' ? 'Job Title' : 'Recruiter'} already exists`, 'warning')
-    }
+    const formatted = value.trim();
+    const endpoint = `/api/departments/${departmentId}/${type === 'jobTitle' ? 'job-title' : 'recruiter'}`;
 
-    const endpoint = `http://localhost:5000/api/departments/${departmentId}/${type === 'jobTitle' ? 'job-title' : 'recruiter'}`
-    await axios.put(endpoint, { [type === 'jobTitle' ? 'title' : 'recruiter']: formatted })
-    Swal.fire('Success', 'Added successfully', 'success')
-    fetchDepartment()
+    try {
+      await axios.put(endpoint, {
+        [type === 'jobTitle' ? 'title' : 'recruiter']: formatted
+      });
+      Swal.fire('Success', 'Added successfully', 'success');
+      fetchDepartment();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to add';
+      Swal.fire('Error', msg, 'error'); // ✅ Only message, no link
+    }
   }
-}
+};
+
 
 const promptEdit = async (type, oldValue) => {
   const { value } = await Swal.fire({
-    title: `Edit ${type === 'jobTitle' ? 'Job Title' : 'Recruiter'}`,
+    title: `Edit ${type}`,
     input: 'text',
     inputValue: oldValue,
     showCancelButton: true
   })
 
-  if (value?.trim() && value.trim() !== oldValue) {
-    const endpoint = `http://localhost:5000/api/departments/${departmentId}/update-${type}`
+  if (value?.trim() && value !== oldValue) {
+    const endpoint = `/api/departments/${departmentId}/update-${type}`
     const payload = {
       [type === 'jobTitle' ? 'oldTitle' : 'oldRecruiter']: oldValue,
       [type === 'jobTitle' ? 'newTitle' : 'newRecruiter']: value.trim()
     }
-    await axios.put(endpoint, payload)
-    Swal.fire('Updated', `${type === 'jobTitle' ? 'Title' : 'Recruiter'} updated`, 'success')
-    fetchDepartment()
+
+    try {
+      await axios.put(endpoint, payload)
+      Swal.fire('Updated', 'Updated successfully', 'success')
+      fetchDepartment()
+    } catch {
+      Swal.fire('Error', 'Failed to update', 'error')
+    }
   }
 }
-
-
 
 const removeItem = async (type, value) => {
   const confirm = await Swal.fire({
     title: `Remove ${value}?`,
     icon: 'warning',
     showCancelButton: true
-  })
+  });
 
   if (confirm.isConfirmed) {
-    const endpoint = `http://localhost:5000/api/departments/${departmentId}/remove-${type === 'jobTitle' ? 'job-title' : 'recruiter'}`
-    await axios.put(endpoint, { [type === 'jobTitle' ? 'title' : 'recruiter']: value })
-    Swal.fire('Removed', `${type === 'jobTitle' ? 'Title' : 'Recruiter'} removed`, 'success')
-    fetchDepartment()
+    const endpoint = `/api/departments/${departmentId}/remove-${type === 'jobTitle' ? 'job-title' : 'recruiter'}`;
+    const payload = { [type === 'jobTitle' ? 'title' : 'recruiter']: value };
+
+    try {
+      await axios.put(endpoint, payload);
+      Swal.fire('Removed', 'Removed successfully', 'success');
+      fetchDepartment();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to remove';
+      Swal.fire('Cannot Delete', msg, 'warning'); // ✅ Message only, no link
+    }
   }
-}
+};
 
 
 onMounted(fetchDepartment)

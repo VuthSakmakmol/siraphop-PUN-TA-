@@ -1,153 +1,181 @@
-const { sendTelegramMessage } = require('../utils/telegram');
 const Department = require('../models/Department');
+const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
 
-
-// Get all departments (with optional filtering by type)
+// Get all departments
 exports.getDepartments = async (req, res) => {
   try {
-    const filter = req.query.type ? { type: req.query.type } : {}
-    const departments = await Department.find(filter)
-    res.json(departments)
+    const departments = await Department.find({});
+    res.json(departments);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch departments' })
+    res.status(500).json({ message: 'Failed to fetch departments', error: err.message });
   }
-}
+};
 
-
+// Get department by ID
 exports.getDepartmentById = async (req, res) => {
-  const department = await Department.findById(req.params.id)
-  if (!department) return res.status(404).json({ message: 'Department not found' })
-  res.json(department)
-}
-
-
+  try {
+    const department = await Department.findById(req.params.id);
+    if (!department) return res.status(404).json({ message: 'Department not found' });
+    res.json(department);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
 exports.createDepartment = async (req, res) => {
   try {
     const { name, type } = req.body;
 
-    // Validation
     if (!name || !type) {
       return res.status(400).json({ message: 'Name and type are required' });
     }
 
-    // Check for duplicates
-    const exists = await Department.findOne({ name, type });
-    if (exists) {
+    const existing = await Department.findOne({ name, type });
+    if (existing) {
       return res.status(400).json({ message: 'Department already exists' });
     }
 
-    // Auto-generate Department ID
-    const count = await Department.countDocuments();
-    const departmentId = `DEPT-${String(count + 1).padStart(3, '0')}`;
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'departmentId' },
+      { $inc: { value: 1 } },
+      { new: true, upsert: true }
+    );
 
-    const department = await Department.create({
+    const newDept = new Department({
+      departmentId: counter.value,
       name,
       type,
-      departmentId,
       jobTitles: [],
       recruiters: []
     });
 
-    // ✅ Telegram Alert if type is White Collar
-    if (department.type === 'White Collar') {
-      await sendTelegramMessage(`✅ *White Collar Department Added*: "${department.name}"`);
-    }
+    await newDept.save();
+    res.status(201).json(newDept);
 
-    res.status(201).json(department);
   } catch (err) {
-    console.error('Create error:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Create department error:', err);
+    res.status(500).json({ message: 'Failed to create department', error: err.message });
   }
 };
-
 
 // Update department
 exports.updateDepartment = async (req, res) => {
   try {
-    const updated = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true })
-    res.json(updated)
+    const { name, type } = req.body;
+    const updatedDepartment = await Department.findByIdAndUpdate(
+      req.params.id,
+      { name, type },
+      { new: true }
+    );
+    if (!updatedDepartment) return res.status(404).json({ message: 'Department not found' });
+    res.json(updatedDepartment);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to update department' })
+    res.status(500).json({ message: 'Failed to update department', error: err.message });
   }
-}
-
+};
 
 // Delete department
 exports.deleteDepartment = async (req, res) => {
   try {
-    await Department.findByIdAndDelete(req.params.id)
-    res.json({ message: 'Deleted successfully' })
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to delete department' })
-  }
-}
+    const department = await Department.findById(req.params.id);
+    if (!department) return res.status(404).json({ message: 'Department not found' });
 
-// Add unique job title
+    const jobCount = await JobRequisition.countDocuments({ departmentId: req.params.id });
+    if (jobCount > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete department. It is currently used in job requisitions.',
+        link: '/whitecollar/requisitions'
+      });
+    }
+
+    await Department.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Department deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error while deleting department.', error: err.message });
+  }
+};
+
+// Add job title
 exports.addJobTitle = async (req, res) => {
-  const { title } = req.body
+  const { title } = req.body;
   try {
-    const dept = await Department.findById(req.params.id)
-    if (dept.jobTitles.includes(title)) {
-      return res.status(400).json({ message: 'Job title already exists' })
-    }
-    dept.jobTitles.push(title)
-    await dept.save()
-    res.json(dept)
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to add job title' })
-  }
-}
+    const department = await Department.findById(req.params.id);
+    if (!department) return res.status(404).json({ message: 'Department not found' });
 
-// Add unique recruiter
+    if (department.jobTitles.includes(title)) {
+      return res.status(400).json({ message: 'Job title already exists' });
+    }
+
+    department.jobTitles.push(title);
+    await department.save();
+    res.json(department);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add job title', error: err.message });
+  }
+};
+
+// Add recruiter
 exports.addRecruiter = async (req, res) => {
-  const { recruiter } = req.body
+  const { recruiter } = req.body;
   try {
-    const dept = await Department.findById(req.params.id)
-    if (dept.recruiters.includes(recruiter)) {
-      return res.status(400).json({ message: 'Recruiter already exists' })
+    const department = await Department.findById(req.params.id);
+    if (!department) return res.status(404).json({ message: 'Department not found' });
+
+    if (department.recruiters.includes(recruiter)) {
+      return res.status(400).json({ message: 'Recruiter already exists' });
     }
-    dept.recruiters.push(recruiter)
-    await dept.save()
-    res.json(dept)
+
+    department.recruiters.push(recruiter);
+    await department.save();
+    res.json(department);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to add recruiter' })
+    res.status(500).json({ message: 'Failed to add recruiter', error: err.message });
   }
-}
+};
 
-
-// ✅ Remove Job Title
 exports.removeJobTitle = async (req, res) => {
   try {
-    const { id } = req.params
-    const { title } = req.body
+    const { id } = req.params;
+    const { title } = req.body;
 
-    const dept = await Department.findById(id)
-    if (!dept) return res.status(404).json({ message: 'Department not found' })
+    const dept = await Department.findById(id);
+    if (!dept) return res.status(404).json({ message: 'Department not found' });
 
-    dept.jobTitles = dept.jobTitles.filter(t => t !== title)
-    await dept.save()
+    const inUse = await JobRequisition.findOne({ departmentId: id, jobTitle: title });
+    if (inUse) {
+      return res.status(400).json({
+        message: `❌ The job title "${title}" is used in a job requisition. Please delete the related requisitions first.`
+      });
+    }
 
-    res.json(dept)
+    dept.jobTitles = dept.jobTitles.filter(t => t !== title);
+    await dept.save();
+
+    res.json({ message: 'Job title removed', department: dept });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message })
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-}
+};
 
-// ✅ Remove Recruiter
+// Remove recruiter
 exports.removeRecruiter = async (req, res) => {
+  const { recruiter } = req.body;
   try {
-    const { id } = req.params
-    const { recruiter } = req.body
+    const department = await Department.findById(req.params.id);
+    if (!department) return res.status(404).json({ message: 'Department not found' });
 
-    const dept = await Department.findById(id)
-    if (!dept) return res.status(404).json({ message: 'Department not found' })
+    const inUse = await JobRequisition.findOne({ departmentId: req.params.id, recruiter });
+    if (inUse) {
+      return res.status(400).json({
+        message: `Cannot remove recruiter "${recruiter}" because it's used in job requisitions.`,
+        link: '/whitecollar/requisitions'
+      });
+    }
 
-    dept.recruiters = dept.recruiters.filter(r => r !== recruiter)
-    await dept.save()
-
-    res.json(dept)
+    department.recruiters = department.recruiters.filter(r => r !== recruiter);
+    await department.save();
+    res.json({ message: 'Recruiter removed successfully.', department });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message })
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
-}
+};

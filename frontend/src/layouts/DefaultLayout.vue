@@ -6,7 +6,7 @@
     <!-- Brand -->
     <v-list-item>
       <v-list-item-content>
-        <v-list-item-title class="font-weight-bold">HR System</v-list-item-title>
+        <v-list-item-title class="font-weight-bold">Trax - TA</v-list-item-title>
         <v-list-item-subtitle>Admin Panel</v-list-item-subtitle>
       </v-list-item-content>
     </v-list-item>
@@ -77,7 +77,7 @@
       <!-- Top Bar -->
       <v-app-bar app color="primary" dark>
         <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
-        <v-toolbar-title>Dashboard</v-toolbar-title>
+        <v-toolbar-title>Trax Apparel Cambodia</v-toolbar-title>
         <v-spacer />
         <v-btn icon @click="logout">
           <v-icon>mdi-logout</v-icon>

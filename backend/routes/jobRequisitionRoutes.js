@@ -1,19 +1,21 @@
-const express = require('express')
-const router = express.Router()
+const express = require('express');
+const router = express.Router();
 const {
   createJobRequisition,
   getJobRequisitions,
   getJobRequisitionById,
   updateJobRequisition,
   deleteJobRequisition,
-  getJobTitlesAndRecruiters
-} = require('../controllers/jobRequisitionController')
+  getJobTitlesAndRecruiters,
+} = require('../controllers/jobRequisitionController');
 
-router.get('/', getJobRequisitions)
-router.get('/:id', getJobRequisitionById)
-router.get('/department/:departmentId', getJobTitlesAndRecruiters)
-router.post('/', createJobRequisition)
-router.put('/:id', updateJobRequisition)
-router.delete('/:id', deleteJobRequisition)
+// Define routes with correct controller methods
+router.get('/', getJobRequisitions);  // Get all job requisitions
+router.get('/:id', getJobRequisitionById);  // Get job requisition by ID
+router.get('/department/:departmentId', getJobTitlesAndRecruiters);  // Get job titles and recruiters by department ID
+router.post('/', createJobRequisition);  // Create a new job requisition
+router.put('/:id', updateJobRequisition);  // Update an existing job requisition by ID
+router.delete('/:id', deleteJobRequisition);  // Delete a job requisition by ID
 
-module.exports = router
+
+module.exports = router;

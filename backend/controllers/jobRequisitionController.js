@@ -1,7 +1,8 @@
 const moment = require('moment-timezone')
 const JobRequisition = require('../models/JobRequisition')
 const Department = require('../models/Department')
-const { sendTelegramMessage } = require('../utils/telegram');
+const Counter = require('../models/Counter');
+
 
 
 // ✅ Get job titles from White Collar departments
@@ -15,73 +16,51 @@ exports.getWhiteCollarJobTitles = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch job titles' })
   }
 }
-
-
-// Get all job requisitions
+// controllers/jobRequisitionController.js
 exports.getJobRequisitions = async (req, res) => {
   try {
-    const jobs = await JobRequisition.find()
-  .populate('departmentId', 'name') // 👈 This brings in the name only
-  .sort({ createdAt: -1 })
-    res.status(200).json(jobs);
+    const jobRequisitions = await JobRequisition.find()
+      .populate('departmentId', 'name') // ✅ Fetch department name only
+    res.json(jobRequisitions)
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch job requisitions' });
+    console.error(err)
+    res.status(500).json({ message: 'Error fetching job requisitions' })
   }
-};
+}
+
 
 exports.createJobRequisition = async (req, res) => {
   try {
-    const {
-      departmentId, jobTitle, recruiter,
-      targetCandidates, hiringCost, status,
-      openingDate, startDate
-    } = req.body;
+    const { departmentId, jobTitle } = req.body;
 
-    // Validate required fields
-    if (!departmentId || !jobTitle || !recruiter || !status || !openingDate) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    const count = await JobRequisition.countDocuments();
-    const jobRequisitionId = `JR-${String(count + 1).padStart(4, '0')}`;
-
-    // Create job requisition object
-    const jobData = {
-      jobRequisitionId,
+    const existing = await JobRequisition.findOne({
       departmentId,
       jobTitle,
-      recruiter,
-      targetCandidates: parseInt(targetCandidates),
-      hiringCost: parseFloat(hiringCost),
-      status,
-      openingDate: moment.tz(openingDate, 'Asia/Phnom_Penh').toDate()
-    };
+      status: { $in: ['Vacant', 'Suspended'] },
+    });
 
-    // Optional: add startDate only if provided
-    if (startDate && startDate !== '') {
-      jobData.startDate = moment.tz(startDate, 'Asia/Phnom_Penh').toDate();
+    if (existing) {
+      return res.status(400).json({
+        message: `Job title already in use and ${existing.status.toLowerCase()}. Please fill or cancel it before creating a new one.`,
+      });
     }
 
-    const newJob = new JobRequisition(jobData);
-    await newJob.save();
-
-    // ✅ Optional: Telegram alert here
-    await sendTelegramMessage(
-      `✅ *New Job Requisition Created:*\n` +
-      `*Job ID:* ${jobRequisitionId}\n` +
-      `*Department:* ${newJob.departmentId?.name || '[Unknown]'}\n` +
-      `*Job Title:* ${jobTitle}\n` +
-      `*Recruiter:* ${recruiter}\n` +
-      `*Target:* ${targetCandidates}\n` +
-      `*Hiring Cost:* $${hiringCost}\n` +
-      `*Status:* ${status}\n` +
-      `*Opening Date:* ${openingDate}\n` +
-      (startDate ? `*Start Date:* ${startDate}` : '')
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'jobRequisitionId' },
+      { $inc: { value: 1 } },
+      { new: true, upsert: true }
     );
 
-    res.status(201).json(newJob);
+    const jobRequisitionId = (counter?.value || 1).toString();
+
+    const newJobRequisition = new JobRequisition({
+      ...req.body,
+      jobRequisitionId,
+    });
+
+    await newJobRequisition.save();
+    res.status(201).json(newJobRequisition);
   } catch (err) {
-    console.error('Create Job Error:', err);
     res.status(500).json({ message: 'Failed to create job requisition' });
   }
 };
@@ -99,41 +78,35 @@ exports.getJobRequisitionById = async (req, res) => {
   }
 }
 
-// ✅ Update job requisition
 exports.updateJobRequisition = async (req, res) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     const {
-      departmentId,
-      jobTitle,
       recruiter,
       targetCandidates,
       hiringCost,
       status,
-      openingDate,
-      startDate
-    } = req.body
+      openingDate
+    } = req.body;
 
     const updated = await JobRequisition.findByIdAndUpdate(
       id,
       {
-        departmentId,
-        jobTitle,
         recruiter,
         targetCandidates,
         hiringCost,
         status,
         openingDate: moment.tz(openingDate, 'Asia/Phnom_Penh'),
-        startDate: moment.tz(startDate, 'Asia/Phnom_Penh')
       },
       { new: true }
-    )
+    );
 
-    res.status(200).json(updated)
+    res.status(200).json(updated);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to update job requisition' })
+    res.status(500).json({ message: 'Failed to update job requisition' });
   }
-}
+};
+
 
 // ✅ Get job titles and recruiters for a department
 exports.getJobTitlesAndRecruiters = async (req, res) => {
