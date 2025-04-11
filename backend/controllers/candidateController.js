@@ -3,100 +3,74 @@ const Candidate = require('../models/Candidate');
 const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
 
-// ✅ Create a new candidate
+// ✅ Create Candidate
 exports.createCandidate = async (req, res) => {
   const {
-    name,
-    email,
-    phone,
-    gender,
-    applicationSource,
-    jobRequisitionId,
-    hireDecision,
-    noted
+    name, recruiter, applicationSource,
+    jobRequisitionId, hireDecision = 'Candidate in Process',
+    noted, applicationDate
   } = req.body;
 
   const documents = req.files?.map(file => file.path) || [];
 
-  // ✅ Validation
   if (!jobRequisitionId || !mongoose.Types.ObjectId.isValid(jobRequisitionId)) {
     return res.status(400).json({ message: '❌ Invalid or missing Job Requisition ID.' });
   }
 
   try {
     const job = await JobRequisition.findById(jobRequisitionId);
-    if (!job) {
-      return res.status(404).json({ message: '❌ Job requisition not found.' });
-    }
-
+    if (!job) return res.status(404).json({ message: '❌ Job requisition not found.' });
     if (job.status !== 'Vacant') {
       return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
     }
 
-    // ✅ Generate unique incremental candidate ID using Counter model
     const counter = await Counter.findOneAndUpdate(
       { name: 'candidateId' },
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
-    const candidateId = counter.value;
 
     const newCandidate = new Candidate({
-      candidateId,
+      candidateId: counter.value,
       fullName: name,
-      email,
-      phone,
-      gender,
+      recruiter,
       applicationSource,
       jobRequisitionId,
       hireDecision,
       noted,
       documents,
       progress: 'Application',
-      progressDates: { Application: new Date() }
+      progressDates: {
+        Application: applicationDate ? new Date(applicationDate) : new Date()
+      }
     });
 
     await newCandidate.save();
     return res.status(201).json({
-      message: `✅ Candidate ${name} (ID: ${candidateId}) successfully created.`,
+      message: `✅ Candidate ${name} (ID: ${counter.value}) created.`,
       candidate: newCandidate
     });
 
   } catch (err) {
     console.error('❌ Error creating candidate:', err);
-    return res.status(500).json({ message: '❌ Server error while creating candidate', error: err.message });
+    res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
 
-exports.getJobRequisitions = async (req, res) => {
-  try {
-    const jobRequisitions = await JobRequisition.find()
-    console.log('👉 Job Requisitions:', jobRequisitions)
-    res.json(jobRequisitions)
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching job requisitions' })
-  }
-}
-
-// controllers/candidateController.js
+// ✅ Get All Candidates
 exports.getCandidates = async (req, res) => {
   try {
-    const candidates = await Candidate.find()
-      .populate({
-        path: 'jobRequisitionId',
-        populate: {
-          path: 'departmentId',
-          model: 'Department'
-        }
-      });
-
+    const candidates = await Candidate.find().populate({
+      path: 'jobRequisitionId',
+      populate: { path: 'departmentId', model: 'Department' }
+    });
     res.status(200).json(candidates);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch candidates', error: err.message });
+    res.status(500).json({ message: '❌ Failed to fetch candidates', error: err.message });
   }
 };
 
-// ✅ Get candidate by ID
+// ✅ Get Candidate by ID
 exports.getCandidateById = async (req, res) => {
   try {
     const candidate = await Candidate.findById(req.params.id).populate('jobRequisitionId');
@@ -106,10 +80,11 @@ exports.getCandidateById = async (req, res) => {
     res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
+// ✅ Update Candidate
 exports.updateCandidate = async (req, res) => {
   try {
     const { name, email, phone, gender, applicationSource, jobRequisitionId, hireDecision } = req.body;
-
     const updatedFields = {
       fullName: name,
       email,
@@ -117,10 +92,9 @@ exports.updateCandidate = async (req, res) => {
       gender,
       applicationSource,
       jobRequisitionId,
-      hireDecision,
+      hireDecision
     };
 
-    // Handle file upload (optional)
     if (req.files && req.files.length > 0) {
       updatedFields.documents = req.files.map(file => ({
         filename: file.filename,
@@ -132,52 +106,85 @@ exports.updateCandidate = async (req, res) => {
     }
 
     const candidate = await Candidate.findByIdAndUpdate(req.params.id, updatedFields, { new: true });
-
     if (!candidate) return res.status(404).json({ message: 'Candidate not found' });
 
     res.status(200).json({ message: '✅ Candidate updated successfully', candidate });
+
   } catch (err) {
     console.error('❌ Update error:', err);
     res.status(500).json({ message: '❌ Failed to update candidate', error: err.message });
   }
 };
-
-
-// ✅ Update candidate progress and filledCandidates in job requisition
+// ✅ Update candidate progress
 exports.updateCandidateProgress = async (req, res) => {
-  const { newStage, progressDates } = req.body;
+  const { newStage, progressDate } = req.body;
 
   try {
     const candidate = await Candidate.findById(req.params.id);
     if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
 
     const job = await JobRequisition.findById(candidate.jobRequisitionId);
-    if (!job) return res.status(404).json({ message: '❌ Related job requisition not found' });
+    if (!job) return res.status(404).json({ message: '❌ Job requisition not found' });
 
-    // ❌ Prevent update to JobOffer if job is already filled or target reached
-    if (newStage === 'JobOffer') {
-      if (job.status === 'Filled' || (job.filledCandidates || 0) >= job.targetCandidates) {
-        return res.status(400).json({
-          message: '🚫 Cannot move to Job Offer. Job is already filled or candidate target reached.'
-        });
-      }
-
-      // ✅ Safe to increase
-      job.filledCandidates = (job.filledCandidates || 0) + 1;
-
-      if (job.filledCandidates >= job.targetCandidates) {
-        job.status = 'Filled';
-      }
-
-      await job.save();
+    if (job.status === 'Cancel') {
+      return res.status(400).json({ message: '🚫 Cannot update progress. Job is canceled.' });
     }
 
-    // ✅ Proceed to update candidate
-    candidate.progress = newStage;
-    candidate.progressDates = { ...candidate.progressDates, ...progressDates };
-    await candidate.save();
+    // 🚫 Lock check for 'Candidate Refusal' or 'Not Hired'
+    if (['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision)) {
+      return res.status(400).json({ message: `🚫 Progress is locked due to decision: ${candidate.hireDecision}` });
+    }
 
-    res.status(200).json({ message: `✅ Progress updated to ${newStage}`, candidate });
+    candidate.progress = newStage;
+    candidate.progressDates = {
+      ...candidate.progressDates,
+      [newStage]: new Date(progressDate)
+    };
+
+    // ✅ Offer logic
+    if (newStage === 'JobOffer') {
+      if (!candidate._offerCounted && candidate.hireDecision === 'Candidate in Process') {
+        job.offerCount = (job.offerCount || 0) + 1;
+        candidate._offerCounted = true;
+        if (job.offerCount >= job.targetCandidates) {
+          job.status = 'Suspended';
+        }
+      }
+    }
+
+    // ✅ Onboard logic
+    if (newStage === 'Onboard') {
+      if (!candidate._onboardCounted && candidate.hireDecision !== 'Hired') {
+        job.onboardCount = (job.onboardCount || 0) + 1;
+        job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
+        candidate._onboardCounted = true;
+        candidate.hireDecision = 'Hired'; // ✅ Mark candidate as passed
+        if (job.onboardCount >= job.targetCandidates) {
+          job.status = 'Filled';
+        }
+      }
+    }
+
+    // ✅ Backward movement logic
+    if (['ManagerReview', 'Interview', 'Application'].includes(newStage)) {
+      if (candidate._offerCounted) {
+        job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
+        candidate._offerCounted = false;
+      }
+      if (candidate._onboardCounted) {
+        job.onboardCount = Math.max((job.onboardCount || 1) - 1, 0);
+        candidate._onboardCounted = false;
+        candidate.hireDecision = 'Candidate in Process';
+      }
+      if (job.onboardCount < job.targetCandidates) {
+        job.status = 'Vacant';
+      }
+    }
+
+    await candidate.save();
+    await job.save();
+
+    res.status(200).json({ message: `✅ Candidate moved to ${newStage}`, candidate });
 
   } catch (err) {
     console.error('❌ Progress update error:', err);
@@ -202,25 +209,20 @@ exports.uploadMoreDocuments = async (req, res) => {
   }
 };
 
-
-// controllers/candidateController.js
-
+// ✅ Delete candidate
 exports.deleteCandidate = async (req, res) => {
   try {
     const candidate = await Candidate.findByIdAndDelete(req.params.id);
-    if (!candidate) {
-      return res.status(404).json({ message: '❌ Candidate not found' });
-    }
+    if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
 
     res.status(200).json({ message: '✅ Candidate deleted successfully' });
-  } catch (error) {
-    console.error('❌ Delete error:', error);
-    res.status(500).json({ message: '❌ Failed to delete candidate', error: error.message });
+  } catch (err) {
+    console.error('❌ Delete error:', err);
+    res.status(500).json({ message: '❌ Failed to delete candidate', error: err.message });
   }
 };
 
-
-// ✅ Lock/unlock progress
+// ✅ Lock/Unlock candidate
 exports.lockCandidateProgress = async (req, res) => {
   try {
     const candidate = await Candidate.findById(req.params.id);
@@ -230,7 +232,7 @@ exports.lockCandidateProgress = async (req, res) => {
     if (job && job.filledCount >= job.targetCandidates) {
       candidate.locked = true;
       await candidate.save();
-      return res.json({ message: '🔒 Candidate auto-locked (job filled)', candidate });
+      return res.json({ message: '🔒 Auto-locked (Filled)', candidate });
     }
 
     candidate.locked = !candidate.locked;

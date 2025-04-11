@@ -1,198 +1,140 @@
 <template>
   <v-container>
-    <v-card class="pa-4" elevation="4">
-      <div class="d-flex justify-space-between align-center mb-4">
-        <h2>Department Details</h2>
-        <v-btn color="primary" @click="$router.back()">
-          <v-icon start>mdi-arrow-left</v-icon> Back
-        </v-btn>
-      </div>
+    <v-card class="pa-5" elevation="5">
+      <v-card-title>
+        Department Details
+        <v-spacer />
+        <v-btn color="primary" @click="goBack">Back</v-btn>
+      </v-card-title>
 
+      <v-card-text>
+        <p><strong>Department ID:</strong> {{ department?.departmentId }}</p>
+        <p><strong>Department Name:</strong> {{ department?.name }}</p>
+        <p><strong>Type:</strong> {{ department?.type }}</p>
+      </v-card-text>
+
+      <v-divider class="my-4" />
+
+      <!-- Job Title Input -->
       <v-row>
-        <!-- Job Titles -->
         <v-col cols="12" md="6">
-          <v-card outlined>
-            <v-card-title>
-              Job Titles ({{ jobTitles.length }})
-              <v-spacer />
-              <v-btn size="small" color="primary" @click="promptAdd('jobTitle')">
-                <v-icon start>mdi-plus</v-icon> Add
-              </v-btn>
-            </v-card-title>
-
-            <v-data-table
-              :headers="jobTitleHeaders"
-              :items="jobTitlesFormatted"
-              hide-default-footer
-              density="compact"
-            >
-              <template #item.actions="{ item }">
-                <v-btn icon size="x-small" @click="promptEdit('jobTitle', item.title)">
-                  <v-icon>mdi-pencil</v-icon>
-                </v-btn>
-                <v-btn icon size="x-small" color="red" @click="removeItem('jobTitle', item.title)">
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </template>
-              <template #no-data>
-                <v-card-text>No job titles available.</v-card-text>
-              </template>
-            </v-data-table>
-          </v-card>
+          <v-text-field
+            v-model="newJobTitle"
+            label="Add Job Title"
+            density="compact"
+            outlined
+          />
         </v-col>
-
-        <!-- Recruiters -->
-        <v-col cols="12" md="6">
-          <v-card outlined>
-            <v-card-title>
-              Recruiters ({{ recruiters.length }})
-              <v-spacer />
-              <v-btn size="small" color="green" @click="promptAdd('recruiter')">
-                <v-icon start>mdi-plus</v-icon> Add
-              </v-btn>
-            </v-card-title>
-
-            <v-data-table
-              :headers="recruiterHeaders"
-              :items="recruitersFormatted"
-              hide-default-footer
-              density="compact"
-            >
-              <template #item.actions="{ item }">
-                <v-btn icon size="x-small" @click="promptEdit('recruiter', item.recruiter)">
-                  <v-icon>mdi-pencil</v-icon>
-                </v-btn>
-                <v-btn icon size="x-small" color="red" @click="removeItem('recruiter', item.recruiter)">
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </template>
-              <template #no-data>
-                <v-card-text>No recruiters available.</v-card-text>
-              </template>
-            </v-data-table>
-          </v-card>
+        <v-col cols="12" md="3">
+          <v-btn color="success" class="mt-2" @click="addJobTitle">Add</v-btn>
         </v-col>
       </v-row>
+
+      <!-- Job Titles Table -->
+      <h4 class="text-subtitle-1 mt-4">Job Titles</h4>
+      <v-table class="elevation-1">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(title, index) in department?.jobTitles" :key="index">
+            <td>{{ index + 1 }}</td>
+            <td>{{ title }}</td>
+            <td>
+              <v-btn
+                icon
+                variant="text"
+                color="red"
+                @click="removeJobTitle(title)"
+              >
+                <v-icon size="20">mdi-delete</v-icon>
+              </v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
     </v-card>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
 const router = useRouter()
-const departmentId = route.params.id
+const department = ref({})
+const newJobTitle = ref('')
 
-const jobTitles = ref([])
-const recruiters = ref([])
-
-const jobTitlesFormatted = computed(() =>
-  jobTitles.value.map((title, index) => ({ id: index + 1, title }))
-)
-const recruitersFormatted = computed(() =>
-  recruiters.value.map((recruiter, index) => ({ id: index + 1, recruiter }))
-)
-
-const jobTitleHeaders = [
-  { text: 'ID', value: 'id' },
-  { text: 'Job Title', value: 'title' },
-  { text: 'Actions', value: 'actions', sortable: false }
-]
-
-const recruiterHeaders = [
-  { text: 'ID', value: 'id' },
-  { text: 'Recruiter', value: 'recruiter' },
-  { text: 'Actions', value: 'actions', sortable: false }
-]
-
+// Fetch department
 const fetchDepartment = async () => {
   try {
-    const res = await axios.get(`/api/departments/${departmentId}`)
-    jobTitles.value = res.data.jobTitles || []
-    recruiters.value = res.data.recruiters || []
-  } catch (err) {
-    Swal.fire('Error', 'Failed to load department data', 'error')
+    const res = await axios.get(`http://localhost:5000/api/departments/${route.params.id}`)
+    department.value = res.data
+  } catch {
+    Swal.fire('Error', 'Failed to load department', 'error')
   }
 }
 
+const addJobTitle = async () => {
+  if (!newJobTitle.value.trim()) return
 
-const promptAdd = async (type) => {
-  const { value } = await Swal.fire({
-    title: `Add ${type === 'jobTitle' ? 'Job Title' : 'Recruiter'}`,
-    input: 'text',
-    inputLabel: `Enter ${type === 'jobTitle' ? 'title' : 'recruiter name'}`,
-    showCancelButton: true
-  });
-
-  if (value?.trim()) {
-    const formatted = value.trim();
-    const endpoint = `/api/departments/${departmentId}/${type === 'jobTitle' ? 'job-title' : 'recruiter'}`;
-
-    try {
-      await axios.put(endpoint, {
-        [type === 'jobTitle' ? 'title' : 'recruiter']: formatted
-      });
-      Swal.fire('Success', 'Added successfully', 'success');
-      fetchDepartment();
-    } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to add';
-      Swal.fire('Error', msg, 'error'); // ✅ Only message, no link
-    }
+  try {
+    await axios.put(`http://localhost:5000/api/departments/${route.params.id}/job-title`, {
+      title: newJobTitle.value.trim()
+    })
+    Swal.fire('✅ Added', 'Job title added', 'success')
+    newJobTitle.value = ''
+    fetchDepartment()
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to add job title'
+    Swal.fire('Error', msg, 'error')
   }
-};
+}
 
-
-const promptEdit = async (type, oldValue) => {
-  const { value } = await Swal.fire({
-    title: `Edit ${type}`,
-    input: 'text',
-    inputValue: oldValue,
-    showCancelButton: true
+const removeJobTitle = async (title) => {
+  const confirm = await Swal.fire({
+    title: 'Remove Job Title?',
+    text: `Are you sure you want to delete "${title}"?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, remove',
+    cancelButtonText: 'Cancel'
   })
 
-  if (value?.trim() && value !== oldValue) {
-    const endpoint = `/api/departments/${departmentId}/update-${type}`
-    const payload = {
-      [type === 'jobTitle' ? 'oldTitle' : 'oldRecruiter']: oldValue,
-      [type === 'jobTitle' ? 'newTitle' : 'newRecruiter']: value.trim()
-    }
+  if (!confirm.isConfirmed) return
 
-    try {
-      await axios.put(endpoint, payload)
-      Swal.fire('Updated', 'Updated successfully', 'success')
-      fetchDepartment()
-    } catch {
-      Swal.fire('Error', 'Failed to update', 'error')
-    }
+  try {
+    const res = await axios.put(`http://localhost:5000/api/departments/${route.params.id}/remove-job-title`, {
+      title
+    })
+    Swal.fire('✅ Removed', 'Job title deleted', 'success')
+    department.value = res.data.department
+  } catch (err) {
+    const msg = err.response?.data?.message || 'Failed to remove job title'
+    Swal.fire('Error', msg, 'error')
   }
 }
 
-const removeItem = async (type, value) => {
-  const confirm = await Swal.fire({
-    title: `Remove ${value}?`,
-    icon: 'warning',
-    showCancelButton: true
-  });
-
-  if (confirm.isConfirmed) {
-    const endpoint = `/api/departments/${departmentId}/remove-${type === 'jobTitle' ? 'job-title' : 'recruiter'}`;
-    const payload = { [type === 'jobTitle' ? 'title' : 'recruiter']: value };
-
-    try {
-      await axios.put(endpoint, payload);
-      Swal.fire('Removed', 'Removed successfully', 'success');
-      fetchDepartment();
-    } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to remove';
-      Swal.fire('Cannot Delete', msg, 'warning'); // ✅ Message only, no link
-    }
-  }
-};
-
+const goBack = () => {
+  router.push('/whitecollar/departments')
+}
 
 onMounted(fetchDepartment)
 </script>
+
+<style scoped>
+.v-table {
+  white-space: nowrap;
+  overflow-x: auto;
+}
+.v-table th, .v-table td {
+  padding: 8px;
+}
+</style>

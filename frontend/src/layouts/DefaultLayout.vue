@@ -97,7 +97,7 @@
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
   
-  const drawer = ref(true)
+  const drawer = ref(false)
   
   const deptGroup = ref(true)
   const requisitionGroup = ref(true)

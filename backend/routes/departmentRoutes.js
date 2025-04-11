@@ -2,16 +2,23 @@ const express = require('express');
 const router = express.Router();
 const departmentController = require('../controllers/departmentController');
 
+// ✅ Recruiter routes — placed FIRST
+router.get('/global-recruiters', departmentController.getGlobalRecruiters);
+router.post('/global-recruiter', departmentController.addGlobalRecruiter);
+
+// ✅ Main department CRUD
 router.get('/', departmentController.getDepartments);
 router.get('/:id', departmentController.getDepartmentById);
 router.post('/', departmentController.createDepartment);
 router.put('/:id', departmentController.updateDepartment);
 router.delete('/:id', departmentController.deleteDepartment);
 
-router.put('/:id/job-title', departmentController.addJobTitle);  // ✅ Add job title
-router.put('/:id/recruiter', departmentController.addRecruiter); // ✅ Add recruiter
+// ✅ Job titles and recruiter operations
+router.get('/global-recruiters', departmentController.getGlobalRecruiters);
+router.post('/global-recruiter', departmentController.addGlobalRecruiter);
+router.put('/global-recruiters/:id', departmentController.updateGlobalRecruiter);
+router.delete('/global-recruiters/:id', departmentController.deleteGlobalRecruiter);
 
-router.put('/:id/remove-job-title', departmentController.removeJobTitle); // ✅ Remove title
-router.put('/:id/remove-recruiter', departmentController.removeRecruiter); // ✅ Remove recruiter
 
 module.exports = router;
+

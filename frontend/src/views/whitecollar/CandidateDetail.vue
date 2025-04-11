@@ -20,15 +20,6 @@
             <strong>Full Name:</strong> {{ candidate.fullName }}
           </v-col>
           <v-col cols="12" md="4">
-            <strong>Email:</strong> {{ candidate.email || '-' }}
-          </v-col>
-          <v-col cols="12" md="4">
-            <strong>Phone:</strong> {{ candidate.phone || '-' }}
-          </v-col>
-          <v-col cols="12" md="4">
-            <strong>Gender:</strong> {{ candidate.gender }}
-          </v-col>
-          <v-col cols="12" md="4">
             <strong>Source:</strong> {{ candidate.applicationSource }}
           </v-col>
           <v-col cols="12" md="4">
@@ -111,13 +102,14 @@ import Swal from 'sweetalert2'
 
 const route = useRoute()
 const router = useRouter()
+
 const candidate = ref({})
 const newDocuments = ref([])
-const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired']
+const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
 
 const fetchCandidate = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/api/candidates/${route.params.id}`)
+    const res = await axios.get(`/api/candidates/${route.params.id}`)
     candidate.value = res.data
   } catch (err) {
     Swal.fire('❌ Error', 'Failed to load candidate details', 'error')
@@ -132,11 +124,8 @@ const uploadDocuments = async () => {
 
   try {
     const formData = new FormData()
-    newDocuments.value.forEach(file => {
-      formData.append('documents', file)
-    })
-
-    await axios.post(`http://localhost:5000/api/candidates/${route.params.id}/documents`, formData)
+    newDocuments.value.forEach(file => formData.append('documents', file))
+    await axios.post(`/api/candidates/${route.params.id}/documents`, formData)
     Swal.fire('✅ Uploaded', 'Documents uploaded successfully', 'success')
     newDocuments.value = []
     fetchCandidate()
@@ -144,11 +133,6 @@ const uploadDocuments = async () => {
     console.error(err)
     Swal.fire('❌ Error', 'Failed to upload documents', 'error')
   }
-}
-
-const previewDocument = (docPath) => {
-  const fullUrl = `http://localhost:5000/${docPath.replace(/\\/g, '/')}`
-  window.open(fullUrl, '_blank')
 }
 
 const deleteDocument = async (index) => {
@@ -165,18 +149,24 @@ const deleteDocument = async (index) => {
 
   try {
     const updatedDocs = candidate.value.documents.filter((_, i) => i !== index)
-    const res = await axios.put(`http://localhost:5000/api/candidates/${route.params.id}`, {
+    await axios.put(`/api/candidates/${route.params.id}`, {
       documents: updatedDocs
     })
+    candidate.value.documents = updatedDocs
     Swal.fire('🗑️ Deleted', 'Document removed', 'success')
-    candidate.value = res.data.candidate
   } catch (err) {
+    console.error(err)
     Swal.fire('❌ Error', 'Failed to delete document', 'error')
   }
 }
 
+const previewDocument = (docPath) => {
+  const fullUrl = `http://localhost:5000/${docPath.replace(/\\/g, '/')}`
+  window.open(fullUrl, '_blank')
+}
+
 const formatDate = (date) => {
-  return date ? new Date(date).toLocaleString() : '-'
+  return date ? new Date(date).toISOString().split('T')[0] : '-'
 }
 
 const goBack = () => {

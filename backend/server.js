@@ -3,27 +3,28 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const seedAdmin = require('./seeders/adminSeeder');
-const multer = require('multer');  // <-- Move this here
 
+// Load environment variables
 dotenv.config();
+
+// Connect to DB and seed initial admin
 connectDB();
 seedAdmin();
 
+// Initialize Express
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-
-// Correct path to candidateRoutes.js
-const candidateRoutes = require('./routes/candidateRoutes');  // Ensure correct relative path
-const jobRequisitionRoutes = require('./routes/jobRequisitionRoutes');
-
+// API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/departments', require('./routes/departmentRoutes'));
-app.use('/api/candidates', candidateRoutes);
-app.use('/api/job-requisitions', jobRequisitionRoutes);
+app.use('/api/departments', require('./routes/departmentRoutes'));  // Includes recruiters logic
+app.use('/api/candidates', require('./routes/candidateRoutes'));
+app.use('/api/job-requisitions', require('./routes/jobRequisitionRoutes'));
 
-
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
