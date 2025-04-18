@@ -37,9 +37,16 @@ const routes = [
   
   // Blue Collar Routes
   { path: '/bluecollar/departments', name: 'BlueDepartments', component: BlueDepartment, meta: { requiresAuth: true } },
+  {
+    path: '/bluecollar/departments/:id', name: 'BlueCollarDepartmentDetail', component: () => import('@/views/bluecollar/DepartmentDetail.vue')
+  },  
   { path: '/bluecollar/requisitions', name: 'BlueJobRequisition', component: BlueJobRequisition, meta: { requiresAuth: true } },
   { path: '/bluecollar/candidates', name: 'BlueCandidates', component: BlueCandidates, meta: { requiresAuth: true } },
 
+  {
+    path: '/bluecollar/candidates/:id', name: 'BlueCollarCandidateDetail', component: () => import('@/views/BlueCollar/CandidateDetail.vue')
+  },
+  
   // Reports
   { path: '/reports', name: 'Reports', component: Reports, meta: { requiresAuth: true } }
 ]

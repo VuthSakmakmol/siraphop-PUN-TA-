@@ -4,14 +4,20 @@ const GlobalRecruiter = require('../models/GlobalRecruiter');
 
 
 // ✅ Get all departments
+// ✅ GET /api/departments?type=Blue Collar
 exports.getDepartments = async (req, res) => {
   try {
-    const departments = await Department.find({});
+    const filter = {};
+    if (req.query.type) filter.type = req.query.type;
+    if (req.query.subType) filter.subType = req.query.subType;
+
+    const departments = await Department.find(filter);
     res.json(departments);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch departments', error: err.message });
   }
 };
+
 
 // ✅ Get department by ID
 exports.getDepartmentById = async (req, res) => {
@@ -27,7 +33,7 @@ exports.getDepartmentById = async (req, res) => {
 // ✅ Create department
 exports.createDepartment = async (req, res) => {
   try {
-    const { departmentId, name, type } = req.body;
+    const { departmentId, name, type, subType } = req.body; // ✅ fix: include subType here
 
     if (!departmentId || !name || !type) {
       return res.status(400).json({ message: 'Department ID, name and type are required' });
@@ -43,6 +49,7 @@ exports.createDepartment = async (req, res) => {
       departmentId,
       name,
       type,
+      subType, // ✅ now this works
       jobTitles: [],
       recruiters: []
     });
@@ -50,14 +57,17 @@ exports.createDepartment = async (req, res) => {
     await newDept.save();
     res.status(201).json(newDept);
   } catch (err) {
+    console.error('🔥 Error creating department:', err.message);
     res.status(500).json({ message: 'Failed to create department', error: err.message });
   }
 };
 
+
 // ✅ Update department
 exports.updateDepartment = async (req, res) => {
   try {
-    const { departmentId, name, type } = req.body;
+    const { departmentId, name, type, subType } = req.body;
+
     const current = await Department.findById(req.params.id);
     if (!current) return res.status(404).json({ message: 'Department not found' });
 
@@ -69,7 +79,7 @@ exports.updateDepartment = async (req, res) => {
 
     const updated = await Department.findByIdAndUpdate(
       req.params.id,
-      { departmentId, name, type },
+      { departmentId, name, type, subType }, // ✅ include subType
       { new: true }
     );
 
@@ -78,6 +88,7 @@ exports.updateDepartment = async (req, res) => {
     res.status(500).json({ message: 'Failed to update department', error: err.message });
   }
 };
+
 
 // ✅ Delete department
 exports.deleteDepartment = async (req, res) => {
@@ -118,6 +129,7 @@ exports.addJobTitle = async (req, res) => {
     res.status(500).json({ message: 'Failed to add job title', error: err.message });
   }
 };
+
 
 // ✅ Remove job title
 exports.removeJobTitle = async (req, res) => {

@@ -8,7 +8,7 @@ exports.createCandidate = async (req, res) => {
   const {
     name, recruiter, applicationSource,
     jobRequisitionId, hireDecision = 'Candidate in Process',
-    noted, applicationDate
+    applicationDate
   } = req.body;
 
   const documents = req.files?.map(file => file.path) || [];
@@ -18,26 +18,36 @@ exports.createCandidate = async (req, res) => {
   }
 
   try {
-    const job = await JobRequisition.findById(jobRequisitionId);
+    // Get Job and Department info
+    const job = await JobRequisition.findById(jobRequisitionId).populate('departmentId');
     if (!job) return res.status(404).json({ message: '❌ Job requisition not found.' });
     if (job.status !== 'Vacant') {
       return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
     }
 
+    // Determine prefix: S- or NS-
+    const subType = job.departmentId?.subType;
+    let prefix;
+    if (subType === 'Sewer') prefix = 'S';
+    else if (subType === 'Non-Sewer') prefix = 'NS';
+    else return res.status(400).json({ message: '❌ Invalid department subType.' });
+
+    // Auto-increment for specific type
     const counter = await Counter.findOneAndUpdate(
-      { name: 'candidateId' },
+      { name: `candidateId_${prefix}` },
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
 
+    const candidateId = `${prefix}-${counter.value}`;
+
     const newCandidate = new Candidate({
-      candidateId: counter.value,
+      candidateId,
       fullName: name,
       recruiter,
       applicationSource,
       jobRequisitionId,
       hireDecision,
-      noted,
       documents,
       progress: 'Application',
       progressDates: {
@@ -47,7 +57,7 @@ exports.createCandidate = async (req, res) => {
 
     await newCandidate.save();
     return res.status(201).json({
-      message: `✅ Candidate ${name} (ID: ${counter.value}) created.`,
+      message: `✅ Candidate ${name} (ID: ${candidateId}) created.`,
       candidate: newCandidate
     });
 
@@ -56,6 +66,7 @@ exports.createCandidate = async (req, res) => {
     res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
 
 // ✅ Get All Candidates
 exports.getCandidates = async (req, res) => {
