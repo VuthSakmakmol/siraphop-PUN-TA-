@@ -2,13 +2,17 @@ const express = require('express');
 const router = express.Router();
 const departmentController = require('../controllers/departmentController');
 
-// ✅ Global Recruiter Routes
+// ✅ Global Recruiters (Admin Settings)
 router.get('/global-recruiters', departmentController.getGlobalRecruiters);
 router.post('/global-recruiter', departmentController.addGlobalRecruiter);
 router.put('/global-recruiters/:id', departmentController.updateGlobalRecruiter);
 router.delete('/global-recruiters/:id', departmentController.deleteGlobalRecruiter);
+router.delete('/global-recruiter-by-name', departmentController.deleteGlobalRecruiterByName);
 
-// ✅ Department CRUD Routes
+// ✅ Dashboard Recruiter Fetch
+router.get('/all-recruiters', departmentController.getAllRecruitersFromDepartments);
+
+// ✅ Department CRUD
 router.get('/', departmentController.getDepartments);
 router.get('/:id', departmentController.getDepartmentById);
 router.post('/', departmentController.createDepartment);

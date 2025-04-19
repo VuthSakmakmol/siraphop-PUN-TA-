@@ -3,11 +3,13 @@ const Candidate = require('../models/Candidate');
 const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
 
-// ✅ Create Candidate
 exports.createCandidate = async (req, res) => {
   const {
-    name, recruiter, applicationSource,
-    jobRequisitionId, hireDecision = 'Candidate in Process',
+    name,
+    recruiter,
+    applicationSource,
+    jobRequisitionId,
+    hireDecision = 'Candidate in Process',
     applicationDate
   } = req.body;
 
@@ -20,19 +22,30 @@ exports.createCandidate = async (req, res) => {
   try {
     // Get Job and Department info
     const job = await JobRequisition.findById(jobRequisitionId).populate('departmentId');
-    if (!job) return res.status(404).json({ message: '❌ Job requisition not found.' });
-    if (job.status !== 'Vacant') {
-      return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
+    if (!job) {
+      return res.status(404).json({ message: '❌ Job requisition not found.' });
     }
 
-    // Determine prefix: S- or NS-
-    const subType = job.departmentId?.subType;
-    let prefix;
-    if (subType === 'Sewer') prefix = 'S';
-    else if (subType === 'Non-Sewer') prefix = 'NS';
-    else return res.status(400).json({ message: '❌ Invalid department subType.' });
+    if (job.status !== 'Vacant') {
+      return res.status(400).json({
+        message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.`
+      });
+    }
 
-    // Auto-increment for specific type
+    // Determine ID prefix: WC-, S-, or NS-
+    let prefix;
+
+    if (job.departmentId?.type === 'White Collar') {
+      prefix = 'WC';
+    } else if (job.departmentId?.subType === 'Sewer') {
+      prefix = 'S';
+    } else if (job.departmentId?.subType === 'Non-Sewer') {
+      prefix = 'NS';
+    } else {
+      return res.status(400).json({ message: '❌ Invalid department type or subType.' });
+    }
+
+    // Auto-increment candidate ID using Counter model
     const counter = await Counter.findOneAndUpdate(
       { name: `candidateId_${prefix}` },
       { $inc: { value: 1 } },
@@ -56,7 +69,8 @@ exports.createCandidate = async (req, res) => {
     });
 
     await newCandidate.save();
-    return res.status(201).json({
+
+    res.status(201).json({
       message: `✅ Candidate ${name} (ID: ${candidateId}) created.`,
       candidate: newCandidate
     });
@@ -126,11 +140,15 @@ exports.updateCandidate = async (req, res) => {
     res.status(500).json({ message: '❌ Failed to update candidate', error: err.message });
   }
 };
-// ✅ Update candidate progress
+
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
 
   try {
+    if (!newStage || !progressDate) {
+      return res.status(400).json({ message: '❌ Missing stage or progress date.' });
+    }
+
     const candidate = await Candidate.findById(req.params.id);
     if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
 
@@ -141,55 +159,60 @@ exports.updateCandidateProgress = async (req, res) => {
       return res.status(400).json({ message: '🚫 Cannot update progress. Job is canceled.' });
     }
 
-    // 🚫 Lock check for 'Candidate Refusal' or 'Not Hired'
     if (['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision)) {
       return res.status(400).json({ message: `🚫 Progress is locked due to decision: ${candidate.hireDecision}` });
     }
 
-    candidate.progress = newStage;
+    const stageOrder = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
+    const currentIndex = stageOrder.indexOf(candidate.progress);
+    const newIndex = stageOrder.indexOf(newStage);
+
+    if (newIndex === -1) {
+      return res.status(400).json({ message: '❌ Invalid stage name' });
+    }
+
     candidate.progressDates = {
       ...candidate.progressDates,
       [newStage]: new Date(progressDate)
     };
 
+    if (newIndex > currentIndex) {
+      candidate.progress = newStage;
+    }
+
     // ✅ Offer logic
-    if (newStage === 'JobOffer') {
-      if (!candidate._offerCounted && candidate.hireDecision === 'Candidate in Process') {
-        job.offerCount = (job.offerCount || 0) + 1;
-        candidate._offerCounted = true;
-        if (job.offerCount >= job.targetCandidates) {
-          job.status = 'Suspended';
-        }
+    if (
+      newStage === 'JobOffer' &&
+      !candidate._offerCounted &&
+      candidate.hireDecision === 'Candidate in Process'
+    ) {
+      job.offerCount = (job.offerCount || 0) + 1;
+      candidate._offerCounted = true;
+
+      if (job.offerCount >= job.targetCandidates) {
+        job.status = 'Suspended';
       }
     }
 
-    // ✅ Onboard logic
-    if (newStage === 'Onboard') {
-      if (!candidate._onboardCounted && candidate.hireDecision !== 'Hired') {
-        job.onboardCount = (job.onboardCount || 0) + 1;
-        job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
-        candidate._onboardCounted = true;
-        candidate.hireDecision = 'Hired'; // ✅ Mark candidate as passed
-        if (job.onboardCount >= job.targetCandidates) {
-          job.status = 'Filled';
-        }
-      }
-    }
+    // ✅ Onboard logic with hiring cost implication
+    if (newStage === 'Onboard' && !candidate._onboardCounted) {
+      job.onboardCount = (job.onboardCount || 0) + 1;
 
-    // ✅ Backward movement logic
-    if (['ManagerReview', 'Interview', 'Application'].includes(newStage)) {
+      // Reduce offer count if previously counted
       if (candidate._offerCounted) {
         job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
-        candidate._offerCounted = false;
       }
-      if (candidate._onboardCounted) {
-        job.onboardCount = Math.max((job.onboardCount || 1) - 1, 0);
-        candidate._onboardCounted = false;
-        candidate.hireDecision = 'Candidate in Process';
+
+      candidate._onboardCounted = true;
+      candidate.hireDecision = 'Hired';
+
+      // Fill job if onboarded reaches target
+      if (job.onboardCount >= job.targetCandidates) {
+        job.status = 'Filled';
       }
-      if (job.onboardCount < job.targetCandidates) {
-        job.status = 'Vacant';
-      }
+
+      // ✅ (Optional) Log cost-per-hire for debugging
+      console.log(`💰 ${candidate.fullName} counted for cost. HiringCost = $${job.hiringCost}, onboarded = ${job.onboardCount}`);
     }
 
     await candidate.save();
@@ -202,6 +225,7 @@ exports.updateCandidateProgress = async (req, res) => {
     res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
 
 
 // ✅ Upload more documents

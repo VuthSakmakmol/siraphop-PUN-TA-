@@ -12,30 +12,34 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    VueRouter(),
+    VueRouter(), // auto-generate routes from file structure
     Vue({
       template: { transformAssetUrls }
     }),
     Vuetify({
       autoImport: true,
       styles: {
-        configFile: 'src/styles/settings.scss',
+        configFile: 'src/styles/settings.scss', // ✔️ Make sure this file exists
       },
     }),
-    Components(),
+    Components(), // auto-import Vuetify components
     ViteFonts({
       google: {
-        families: [{
-          name: 'Roboto',
-          styles: 'wght@100;300;400;500;700;900',
-        }],
-      },
+        families: [
+          {
+            name: 'Roboto',
+            styles: 'wght@100;300;400;500;700;900',
+          }
+        ]
+      }
     }),
   ],
-  define: { 'process.env': {} },
+  define: {
+    'process.env': {} // ✔️ Required to avoid errors with some libs
+  },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)) // ✔️ For '@/' path usage
     },
     extensions: [
       '.js',
@@ -52,15 +56,16 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
-        changeOrigin: true
+        changeOrigin: true,
+        // rewrite removed to preserve /api path — backend uses /api prefix already
       }
     }
   },
   css: {
     preprocessorOptions: {
-      sass: {
-        api: 'modern-compiler',
-      },
-    },
-  },
+      scss: {
+        additionalData: `@use "@/styles/settings.scss" as *;` // ✔️ Enables Vuetify SCSS customization
+      }
+    }
+  }
 })

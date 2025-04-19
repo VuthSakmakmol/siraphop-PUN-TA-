@@ -14,6 +14,7 @@
             outlined dense
           />
         </v-col>
+
         <v-col cols="12" md="3">
           <v-select
             v-model="filters.recruiter"
@@ -22,6 +23,7 @@
             clearable outlined dense
           />
         </v-col>
+
         <v-col cols="12" md="3">
           <v-select
             v-model="filters.department"
@@ -32,6 +34,7 @@
             clearable outlined dense
           />
         </v-col>
+
         <v-col cols="12" md="3">
           <v-select
             v-model="filters.jobRequisitionId"
@@ -42,22 +45,39 @@
             clearable outlined dense
           />
         </v-col>
+
         <v-col cols="12" md="3">
           <v-menu v-model="startDateMenu" :close-on-content-click="false">
             <template #activator="{ props }">
-              <v-text-field v-bind="props" v-model="filters.start" label="Start Date" readonly outlined dense />
+              <v-text-field
+                v-bind="props"
+                v-model="filters.start"
+                label="Start Date"
+                readonly outlined dense
+              />
             </template>
-            <v-date-picker @update:modelValue="val => { filters.start = formatDate(val); startDateMenu = false }" />
+            <v-date-picker
+              @update:modelValue="val => { filters.start = formatDate(val); startDateMenu = false }"
+            />
           </v-menu>
         </v-col>
+
         <v-col cols="12" md="3">
           <v-menu v-model="endDateMenu" :close-on-content-click="false">
             <template #activator="{ props }">
-              <v-text-field v-bind="props" v-model="filters.end" label="End Date" readonly outlined dense />
+              <v-text-field
+                v-bind="props"
+                v-model="filters.end"
+                label="End Date"
+                readonly outlined dense
+              />
             </template>
-            <v-date-picker @update:modelValue="val => { filters.end = formatDate(val); endDateMenu = false }" />
+            <v-date-picker
+              @update:modelValue="val => { filters.end = formatDate(val); endDateMenu = false }"
+            />
           </v-menu>
         </v-col>
+
         <v-col cols="12" md="3">
           <v-btn color="primary" class="mt-1" @click="fetchDashboardStats">Apply Filters</v-btn>
         </v-col>
@@ -69,17 +89,25 @@
         <v-col cols="12" md="4">
           <RecruitmentPipelineChart :data="stats.pipeline || {}" />
         </v-col>
+
         <v-col cols="12" md="4">
           <SourcePie :data="stats.source || {}" />
         </v-col>
+
         <v-col cols="12" md="4">
           <FinalDecisionPie :data="stats.decision || {}" />
         </v-col>
+
         <v-col cols="12" md="4">
           <MonthlyApplicationLine :data="stats.monthly || {}" />
         </v-col>
+
         <v-col cols="12" md="4">
           <VacancyKPI :data="stats" />
+        </v-col>
+
+        <v-col cols="12" md="4">
+          <FillRateCircle :fillRate="stats.fillRate || 0" />
         </v-col>
       </v-row>
     </v-card>
@@ -91,7 +119,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
-// Components (✅ Make sure the path matches your `src/components/dashboard/`)
+// Chart components
 import RecruitmentPipelineChart from '@/components/dashboard/RecruitmentPipelineChart.vue'
 import SourcePie from '@/components/dashboard/SourcePie.vue'
 import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
@@ -99,9 +127,9 @@ import MonthlyApplicationLine from '@/components/dashboard/MonthlyApplicationLin
 import VacancyKPI from '@/components/dashboard/VacancyKPI.vue'
 import FillRateCircle from '@/components/dashboard/FillRateCircle.vue'
 
-// Filters
+// Filters & dashboard state
 const filters = ref({
-  type: 'All',
+  type: 'White Collar',
   recruiter: null,
   department: null,
   jobRequisitionId: null,
@@ -113,12 +141,15 @@ const recruiters = ref([])
 const departments = ref([])
 const jobRequisitions = ref([])
 const stats = ref({})
+
+// Menu control
 const startDateMenu = ref(false)
 const endDateMenu = ref(false)
 
+// Format helper
 const formatDate = val => val ? dayjs(val).format('YYYY-MM-DD') : ''
 
-// Load all filters for selects
+// Fetch dropdown values
 const fetchFilters = async () => {
   try {
     const [r, d, j] = await Promise.all([
@@ -130,20 +161,21 @@ const fetchFilters = async () => {
     departments.value = d.data
     jobRequisitions.value = j.data
   } catch (err) {
-    console.error('❌ Failed to load filters', err)
+    console.error('❌ Failed to load filter data', err)
   }
 }
 
-// Load full dashboard stats
+// Fetch all dashboard stats from a single endpoint
 const fetchDashboardStats = async () => {
   try {
     const res = await axios.post('/api/dashboard/stats', filters.value)
     stats.value = res.data
   } catch (err) {
-    console.error('❌ Failed to fetch dashboard stats', err)
+    console.error('❌ Failed to load dashboard stats', err)
   }
 }
 
+// Initial load
 onMounted(async () => {
   await fetchFilters()
   await fetchDashboardStats()

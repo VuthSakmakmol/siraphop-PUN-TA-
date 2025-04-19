@@ -4,14 +4,14 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const seedAdmin = require('./seeders/adminSeeder');
 
-// Load environment variables
+// Load env vars
 dotenv.config();
 
-// Connect to DB and seed initial admin
+// Connect DB and seed admin
 connectDB();
 seedAdmin();
 
-// Initialize Express
+// Init app
 const app = express();
 
 // Middleware
@@ -19,11 +19,12 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-// API Routes
+// ✅ API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/departments', require('./routes/departmentRoutes'));  // Includes recruiters logic
+app.use('/api/departments', require('./routes/departmentRoutes'));  // Department + Recruiter logic
 app.use('/api/candidates', require('./routes/candidateRoutes'));
 app.use('/api/job-requisitions', require('./routes/jobRequisitionRoutes'));
+app.use('/api/dashboard', require('./api/dashboard')); // Dashboard routes
 
 // Start server
 const PORT = process.env.PORT || 5000;

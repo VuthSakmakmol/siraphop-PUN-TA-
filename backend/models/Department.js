@@ -9,10 +9,15 @@ const departmentSchema = new mongoose.Schema({
     enum: ['Sewer', 'Non-Sewer'],
     required: function () {
       return this.type === 'Blue Collar';
-    }
-  },
+    },
+    default: null
+  },  
   jobTitles: [{ type: String }],
-  recruiters: [{ type: String }]
+  recruiters: {
+    type: [String],
+    default: []
+  }
+  
 }, { timestamps: true });
 
 module.exports = mongoose.model('Department', departmentSchema);

@@ -1,22 +1,15 @@
 <template>
   <v-container>
+    <!-- Mini Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
-        Dashboard
-      </v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">
-        Department
-      </v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">
-        Job Requisition
-      </v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">
-        Candidates
-      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">Dashboard</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">Department</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Requisition</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">Candidates</v-btn>
     </div>
 
     <v-card class="pa-5" elevation="5">
-      <!-- Toggle Button -->
+      <!-- Toggle Form Button -->
       <v-card-title>
         <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
           {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
@@ -24,48 +17,120 @@
         <v-spacer />
       </v-card-title>
 
-      <!-- Show/Hide Form -->
+      <!-- Create/Edit Form -->
       <v-expand-transition>
         <div v-if="showForm">
           <v-form @submit.prevent="handleSubmit" class="mt-3 pa-4 rounded-lg elevation-1">
             <v-row dense>
               <!-- Department, Job Title, Recruiter -->
               <v-col cols="12" md="4">
-                <v-select v-model="form.departmentId" label="Department" :items="departments" item-title="name" item-value="_id" outlined dense required @update:model-value="onDepartmentChange" :disabled="isEditing" />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-select v-model="form.jobTitle" label="Job Title" :items="jobTitles" :disabled="!jobTitles.length || isEditing" outlined dense required />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-select v-model="form.recruiter" label="Recruiter" :items="recruiters" outlined dense required :disabled="!recruiters.length" />
+                <v-select
+                  v-model="form.departmentId"
+                  label="Department"
+                  :items="departments"
+                  item-title="name"
+                  item-value="_id"
+                  outlined dense
+                  required
+                  @update:model-value="onDepartmentChange"
+                  :disabled="isEditing"
+                />
               </v-col>
 
-              <!-- Target, Status, Cost, Dates -->
-              <v-col cols="12" md="3">
-                <v-text-field v-model.number="form.targetCandidates" type="number" label="Target Candidates" outlined dense required />
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="form.jobTitle"
+                  label="Job Title"
+                  :items="jobTitles"
+                  :disabled="!jobTitles.length || isEditing"
+                  outlined dense
+                  required
+                />
               </v-col>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.status" label="Status" :items="statusOptions" outlined dense required :class="statusColorClass" />
+
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="form.recruiter"
+                  label="Recruiter"
+                  :items="combinedRecruiters"
+                  outlined dense
+                  required
+                  placeholder="Select recruiter"
+                />
               </v-col>
+
+              <!-- Target, Status, Hiring Cost -->
               <v-col cols="12" md="3">
-                <v-text-field v-model.number="form.hiringCost" label="Hiring Cost ($)" type="number" prefix="$" outlined dense />
+                <v-text-field
+                  v-model.number="form.targetCandidates"
+                  type="number"
+                  label="Target Candidates"
+                  outlined dense required
+                />
               </v-col>
+
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="form.status"
+                  label="Status"
+                  :items="statusOptions"
+                  outlined dense required
+                  :class="statusColorClass"
+                />
+              </v-col>
+
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model.number="form.hiringCost"
+                  label="Hiring Cost ($)"
+                  type="number"
+                  prefix="$"
+                  outlined dense
+                />
+              </v-col>
+
+              <!-- Opening Date -->
               <v-col cols="12" md="3">
                 <v-menu v-model="openingDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
-                    <v-text-field v-model="form.openingDate" label="Opening Date" readonly v-bind="props" prepend-inner-icon="mdi-calendar" outlined dense :disabled="isEditing" />
+                    <v-text-field
+                      v-model="form.openingDate"
+                      label="Opening Date"
+                      readonly
+                      v-bind="props"
+                      prepend-inner-icon="mdi-calendar"
+                      outlined dense
+                      :disabled="isEditing"
+                    />
                   </template>
-                  <v-date-picker @update:modelValue="val => { form.openingDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD'); openingDateMenu = false }" />
+                  <v-date-picker @update:modelValue="val => {
+                    form.openingDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+                    openingDateMenu = false
+                  }" />
                 </v-menu>
               </v-col>
+
+              <!-- Start Date -->
               <v-col cols="12" md="3">
                 <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
-                    <v-text-field v-model="form.startDate" label="Start Date" readonly v-bind="props" prepend-inner-icon="mdi-calendar" outlined dense />
+                    <v-text-field
+                      v-model="form.startDate"
+                      label="Start Date"
+                      readonly
+                      v-bind="props"
+                      prepend-inner-icon="mdi-calendar"
+                      outlined dense
+                    />
                   </template>
-                  <v-date-picker @update:modelValue="val => { form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD'); startDateMenu = false }" />
+                  <v-date-picker @update:modelValue="val => {
+                    form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+                    startDateMenu = false
+                  }" />
                 </v-menu>
               </v-col>
+
+              <!-- Submit -->
               <v-col cols="12" md="3">
                 <v-btn color="success" type="submit" class="mt-2" rounded>
                   {{ isEditing ? 'Update' : 'Create' }}
@@ -76,9 +141,27 @@
         </div>
       </v-expand-transition>
 
-      <!-- Table -->
+
+      <!-- 🔍 Global Filter + Export -->
+      <v-row dense class="my-4">
+        <v-col cols="12" md="6">
+          <v-text-field
+            v-model="globalSearch"
+            label="🔍 Search Job Requisitions"
+            placeholder="Search by job ID, department, recruiter..."
+            dense outlined clearable hide-details
+          />
+        </v-col>
+        <v-col cols="12" md="6" class="text-right">
+          <v-btn color="success" class="mt-1" @click="exportToExcel" rounded>
+            📤 Export to Excel
+          </v-btn>
+        </v-col>
+      </v-row>
+
+      <!-- Requisition Table -->
       <div style="overflow-x: auto;">
-        <v-table class="mt-5">
+        <v-table class="mt-2">
           <thead>
             <tr>
               <th>Job ID</th>
@@ -100,10 +183,7 @@
               <td>{{ formatDate(item.openingDate) }}</td>
               <td>{{ item.recruiter }}</td>
               <td>
-                  <router-link
-                  :to="{ path: '/whitecollar/candidates', query: { jobRequisitionId: item._id } }"
-                  class="status-badge-link"
-                  >
+                <router-link :to="{ path: '/whitecollar/candidates', query: { jobRequisitionId: item._id } }" class="status-badge-link">
                   <span :class="[
                     'status-badge',
                     {
@@ -137,6 +217,8 @@
   </v-container>
 </template>
 
+
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
@@ -150,7 +232,6 @@ import { useRouter, useRoute } from 'vue-router'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
-
 
 const form = ref({
   departmentId: '',
@@ -167,6 +248,12 @@ const form = ref({
 const departments = ref([])
 const jobTitles = ref([])
 const recruiters = ref([])
+const globalRecruiters = ref([])
+
+const combinedRecruiters = computed(() => {
+  return [...new Set([...recruiters.value, ...globalRecruiters.value])]
+})
+
 const jobRequisitions = ref([])
 const globalSearch = ref('')
 const openingDateMenu = ref(false)
@@ -180,9 +267,7 @@ const route = useRoute()
 const currentRoute = computed(() => route.path.split('/')[2])
 
 const goTo = (path) => {
-  if (route.path !== path) {
-    router.push(path)
-  }
+  if (route.path !== path) router.push(path)
 }
 
 const statusColorClass = computed(() => {
@@ -202,69 +287,76 @@ const statusOptions = [
   { title: 'Cancel', value: 'Cancel' }
 ]
 
-
 const fetchDepartments = async () => {
-  const res = await axios.get('http://localhost:5000/api/departments?type=White Collar')
+  const res = await axios.get('/api/departments?type=White Collar')
   departments.value = res.data
+}
+
+const fetchGlobalRecruiters = async () => {
+  const res = await axios.get('/api/departments/global-recruiters')
+  globalRecruiters.value = res.data.map(r => r.name)
 }
 
 const onDepartmentChange = () => {
   const selected = departments.value.find(d => d._id === form.value.departmentId)
   jobTitles.value = selected?.jobTitles || []
   recruiters.value = selected?.recruiters || []
+  if (!form.value.recruiter && combinedRecruiters.value.length > 0) {
+    form.value.recruiter = combinedRecruiters.value[0]
+  }
 }
 
 const fetchRequisitions = async () => {
-  try {
-    const res = await axios.get('http://localhost:5000/api/job-requisitions')
-    jobRequisitions.value = res.data.map(j => ({
-      ...j,
-      remainingCandidates: j.targetCandidates - j.onboardCount,
-      departmentName: j.departmentId?.name || '—'
-    }))
-  } catch (err) {
-    console.error('Fetch error:', err)
-  }
+  const res = await axios.get('/api/job-requisitions')
+  jobRequisitions.value = res.data.map(j => ({
+    ...j,
+    remainingCandidates: j.targetCandidates - j.onboardCount,
+    departmentName: j.departmentId?.name || '—'
+  }))
 }
 
-const fetchCandidates = async () => {
-  const res = await axios.get('/api/candidates')
-  const jobId = route.query.jobRequisitionId
-  const allCandidates = res.data
 
-  candidates.value = jobId
-    ? allCandidates.filter(c => c.jobRequisitionId?._id === jobId)
-    : allCandidates
+const exportToExcel = () => {
+  const data = jobRequisitions.value.map(item => ({
+    'Job ID': item.jobRequisitionId,
+    'Department': item.departmentName || '—',
+    'Job Title': item.jobTitle,
+    'Recruiter': item.recruiter,
+    'Target': item.targetCandidates,
+    'Hiring Cost': item.hiringCost,
+    'Status': item.status,
+    'Opening Date': formatDate(item.openingDate),
+    'Start Date': formatDate(item.startDate)
+  }))
 
-  filterCandidates()
+  const worksheet = XLSX.utils.json_to_sheet(data)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
+
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const blob = new Blob([excelBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
+
+  saveAs(blob, 'White_Collar_Job_Requisitions.xlsx')
 }
+
 
 const handleSubmit = async () => {
-  const formData = {
-    departmentId: form.value.departmentId,
-    jobTitle: form.value.jobTitle,
-    recruiter: form.value.recruiter,
-    targetCandidates: form.value.targetCandidates,
-    hiringCost: form.value.hiringCost,
-    status: form.value.status,
-    openingDate: form.value.openingDate,
-    startDate: form.value.startDate
-  }
-
+  const payload = { ...form.value }
   try {
     if (isEditing.value) {
-      await axios.put(`http://localhost:5000/api/job-requisitions/${editingId.value}`, formData)
+      await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
       Swal.fire('✅ Updated', 'Job requisition updated successfully', 'success')
     } else {
-      await axios.post('http://localhost:5000/api/job-requisitions', formData)
+      await axios.post('/api/job-requisitions', payload)
       Swal.fire('✅ Created', 'Job requisition created successfully', 'success')
     }
-
     fetchRequisitions()
     resetForm()
     showForm.value = false
-  } catch (error) {
-    const msg = error?.response?.data?.message || 'Failed to submit'
+  } catch (err) {
+    const msg = err?.response?.data?.message || 'Failed to submit'
     Swal.fire('❌ Error', msg, 'error')
   }
 }
@@ -281,9 +373,24 @@ const editRequisition = (job) => {
     hiringCost: job.hiringCost,
     status: job.status,
     openingDate: dayjs(job.openingDate).format('YYYY-MM-DD'),
-    startDate: job.startDate ? dayjs(job.startDate).format('YYYY-MM-DD') : ''
+    startDate: dayjs(job.startDate).format('YYYY-MM-DD')
   }
   showForm.value = true
+  onDepartmentChange()
+}
+
+const deleteRequisition = async (id) => {
+  const confirm = await Swal.fire({
+    title: 'Delete?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete it'
+  })
+  if (confirm.isConfirmed) {
+    await axios.delete(`/api/job-requisitions/${id}`)
+    Swal.fire('Deleted', 'Requisition removed', 'success')
+    fetchRequisitions()
+  }
 }
 
 const resetForm = () => {
@@ -300,26 +407,11 @@ const resetForm = () => {
   }
   isEditing.value = false
   editingId.value = null
+  jobTitles.value = []
+  recruiters.value = []
 }
 
-const deleteRequisition = async (id) => {
-  const confirm = await Swal.fire({
-    title: 'Delete?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, delete it'
-  })
-  if (confirm.isConfirmed) {
-    await axios.delete(`http://localhost:5000/api/job-requisitions/${id}`)
-    Swal.fire('Deleted', 'Requisition removed', 'success')
-    fetchRequisitions()
-  }
-}
-
-const formatDate = (val) => {
-  if (!val) return ''
-  return new Date(val).toLocaleDateString()
-}
+const formatDate = val => val ? new Date(val).toLocaleDateString() : ''
 
 const filteredRequisitions = computed(() => {
   if (!globalSearch.value) return jobRequisitions.value
@@ -331,156 +423,41 @@ const filteredRequisitions = computed(() => {
   )
 })
 
-const exportToExcel = () => {
-  const data = jobRequisitions.value.map(item => ({
-    'Job ID': item.jobRequisitionId,
-    'Department': item.departmentName,
-    'Job Title': item.jobTitle,
-    'Target': item.targetCandidates,
-    'Onboard': item.onboardCount || 0,
-    'Offer': item.offerCount || 0,
-    'Remaining': item.remainingCandidates,
-    'Hiring Cost ($)': item.hiringCost?.toFixed(2),
-    'Status': item.status,
-    'Opening Date': formatDate(item.openingDate),
-    'Start Date': formatDate(item.startDate)
-  }))
-
-  const worksheet = XLSX.utils.json_to_sheet(data)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  })
-  saveAs(blob, 'Job_Requisitions.xlsx')
-}
-
 onMounted(() => {
   fetchDepartments()
   fetchRequisitions()
+  fetchGlobalRecruiters()
 })
 </script>
 
 
 <style scoped>
-.v-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-}
-
-.v-form {
-  background-color: #fafafa;
-  padding: 20px;
-  border-radius: 10px;
-}
-
-.v-btn {
-  text-transform: none !important;
-  margin: 0 auto !important;
-  font-weight: 500;
-}
-
 .v-table {
   white-space: nowrap;
+  overflow-x: auto;
 }
-
-.v-table th,
-.v-table td {
-  padding: 12px !important;
-  vertical-align: middle !important;
-  text-align: center !important;
-  font-size: 14px;
-  justify-content: center;
-  align-items: center;
-}
-
-.v-table td > * {
-  margin: auto; /* Make child elements like buttons center */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-
-.v-text-field,
-.v-select {
-  border-radius: 8px;
-}
-
-.v-text-field input,
-.v-select input {
-  font-size: 14px;
-}
-
-.v-card-title {
-  font-size: 20px;
-  font-weight: 600;
-  padding-bottom: 10px;
-}
-
-.v-icon {
-  font-size: 18px;
-}
-
-/* Status */
-.status-badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-weight: 500;
-  font-size: 13px;
-  display: inline-block;
-  min-width: 80px;
-  text-align: center;
-  color: #222;
-}
-.status-vacant {
-  background-color: #a5d6a7;
-}
-.status-suspended {
-  background-color: #eeeeee;
-}
-.status-filled {
-  background-color: #fff59d;
-}
-.status-cancel {
-  background-color: #ef9a9a;
-}
-
-/* CSS navbar */
 .whitecollar-nav {
   display: flex;
-  flex-wrap: wrap; /* Ensures buttons wrap to next line */
+  gap: 12px;
   margin-bottom: 24px;
-  justify-content: flex-start;
-  width: 60%;
+  flex-wrap: wrap;
 }
-
 .whitecollar-nav .v-btn {
   text-transform: none;
   font-weight: 500;
-  font-size: 14px;
-  padding: 6px 20px;
-  border-radius: 10px;
-  background-color: #f4f7fb;
+  border-radius: 8px;
+  padding: 6px 18px;
+  background-color: #f1f5fb;
   color: #1976d2;
-  transition: all 0.3s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  white-space: nowrap; /* Prevent text from wrapping inside button */
-  flex-shrink: 0;       /* Prevent buttons from shrinking */
 }
-
 .whitecollar-nav .v-btn:hover:not(.active-tab) {
   background-color: #e3f2fd;
   color: #1565c0;
 }
-
 .active-tab {
   background-color: #1976d2 !important;
-  color: #fff !important;
+  color: white !important;
   font-weight: 600;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
-
-
 </style>
