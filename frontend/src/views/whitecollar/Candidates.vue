@@ -4,7 +4,7 @@
     <div class="whitecollar-nav">
       <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">Dashboard</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">Department</v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Requisition</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Opening</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">Candidates</v-btn>
     </div>
 
@@ -20,17 +20,19 @@
         <div v-show="showForm">
           <v-form @submit.prevent="handleSubmit" class="mt-3">
             <v-row dense>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.departmentId" :items="departments" item-title="name" item-value="_id" label="Department" @update:modelValue="onDepartmentChange" />
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="form.jobRequisitionId"
+                  :items="jobRequisitionOptions"
+                  item-title="displayName"
+                  item-value="_id"
+                  label="Job Requisition"
+                  @update:modelValue="updateRequisitionDetails"
+                  required
+                />
               </v-col>
               <v-col cols="12" md="3">
-                <v-select v-model="form.jobTitle" :items="jobTitles" label="Job Title" @update:modelValue="assignBestRequisition" />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.recruiter" :items="recruiters" label="Recruiter" />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-text-field v-model="form.name" label="Full Name" />
+                <v-text-field v-model="form.name" label="Candidate Name" />
               </v-col>
               <v-col cols="12" md="3">
                 <v-select v-model="form.applicationSource" :items="sources" label="Application Source" />
@@ -52,7 +54,7 @@
       <!-- Filters -->
       <v-divider class="my-4" />
       <div class="d-flex justify-space-between align-center">
-        <v-btn color="success" @click="exportToExcel">Export to Excel</v-btn>
+        <v-btn color="success" @click="exportToExcel">Export</v-btn>
         <v-text-field v-model="globalSearch" label="Search" prepend-inner-icon="mdi-magnify" clearable />
       </div>
 
@@ -93,7 +95,7 @@
                   <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
                 </template>
                 <v-list>
-                  <v-list-item @click="editCandidate(c._id)"><v-list-item-title>Edit</v-list-item-title></v-list-item>
+                  <v-list-item @click="editCandidate(c)"><v-list-item-title>Edit</v-list-item-title></v-list-item>
                   <v-list-item @click="goToCandidateDetail(c._id)"><v-list-item-title>Detail</v-list-item-title></v-list-item>
                   <v-list-item @click="deleteCandidate(c._id)"><v-list-item-title>Delete</v-list-item-title></v-list-item>
                 </v-list>
@@ -120,6 +122,8 @@
   </v-container>
 </template>
 
+
+
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -144,18 +148,12 @@ const candidates = ref([])
 const filteredCandidates = ref([])
 
 const departments = ref([])
-const jobTitles = ref([])
 const recruiters = ref([])
-const jobRequisitions = ref([])
-
 const globalSearch = ref('')
-const form = ref({
-  name: '', recruiter: '', departmentId: '', jobRequisitionId: '', jobTitle: '',
-  applicationSource: '', hireDecision: 'Candidate in Process', progress: 'Application',
-  progressDates: { Application: dayjs().tz(tz).format('YYYY-MM-DD') }, documents: []
-})
+
 
 const stageDialog = ref({ show: false, candidate: null, stage: '', date: '' })
+
 const stageLabels = ['Recieved Application', 'Sent to Manager', 'Interviews', 'JobOffer', 'Hired', 'Onboard']
 const stageMap = {
   'Recieved Application': 'Application',
@@ -165,6 +163,17 @@ const stageMap = {
   'Hired': 'Hired',
   'Onboard': 'Onboard'
 }
+
+const stageDisplayNames = {
+  Application: 'Recieved Application',
+  ManagerReview: 'Sent to Manager',
+  Interview: 'Interviews',
+  JobOffer: 'Job Offer',
+  Hired: 'Hired',
+  Onboard: 'Onboard'
+}
+
+
 const stageColor = stage => ({
   Application: 'stage-manager', ManagerReview: 'stage-manager', Interview: 'stage-interview',
   JobOffer: 'stage-offer', Hired: 'stage-hired', Onboard: 'stage-onboard'
@@ -176,32 +185,41 @@ const currentRoute = computed(() => route.path.split('/')[2])
 const goTo = path => router.push(path)
 const goToCandidateDetail = id => router.push(`/whitecollar/candidates/${id}`)
 
-// Utility
 const formatDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
+
 
 // Date Select + Confirm
 const selectDate = (c, label) => {
   const backend = stageMap[label]
   stageDialog.value = {
-    show: true, candidate: c, stage: backend,
+    show: true,
+    candidate: c,
+    stage: backend,
     date: c.progressDates?.[backend] || dayjs().tz(tz).format('YYYY-MM-DD')
   }
 }
 const confirmStageDate = async () => {
   const { candidate, stage, date } = stageDialog.value
+  stageDialog.value.show = false
   try {
     await axios.put(`/api/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
-    await fetchCandidates()
-    Swal.fire('✅ Updated', `${stage} updated`, 'success')
+    const index = candidates.value.findIndex(c => c._id === candidate._id)
+    if (index !== -1) {
+      candidates.value[index].progressDates[stage] = date
+      if (stage !== candidates.value[index].progress) {
+        candidates.value[index].progress = stage
+      }
+    }
+    Swal.fire('✅ Updated', `${stageDisplayNames[stage]} updated`, 'success')
   } catch (err) {
     Swal.fire('❌ Error', 'Failed to update stage', 'error')
-  } finally {
-    stageDialog.value.show = false
   }
 }
 
 // Form
 const handleFileUpload = files => form.value.documents = Array.isArray(files) ? files : [files]
+
+
 const handleSubmit = async () => {
   const fd = new FormData()
   Object.keys(form.value).forEach(k => {
@@ -210,39 +228,15 @@ const handleSubmit = async () => {
   form.value.documents.forEach(d => fd.append('documents', d))
 
   const method = isEditMode.value ? 'put' : 'post'
-  const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : '/api/candidates'
+  const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
   await axios[method](url, fd)
   Swal.fire('✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'}`, 'success')
   resetForm()
   await fetchCandidates()
 }
-const resetForm = () => {
-  form.value = {
-    name: '', recruiter: '', departmentId: '', jobRequisitionId: '', jobTitle: '',
-    applicationSource: '', hireDecision: 'Candidate in Process', progress: 'Application',
-    progressDates: { Application: dayjs().tz(tz).format('YYYY-MM-DD') }, documents: []
-  }
-  isEditMode.value = false
-  showForm.value = false
-}
-const editCandidate = id => {
-  const c = candidates.value.find(x => x._id === id)
-  if (!c) return
-  form.value = {
-    name: c.fullName, recruiter: c.recruiter,
-    departmentId: c.jobRequisitionId?.departmentId?._id,
-    jobRequisitionId: c.jobRequisitionId?._id,
-    jobTitle: c.jobRequisitionId?.jobTitle,
-    applicationSource: c.applicationSource,
-    hireDecision: c.hireDecision,
-    progress: c.progress,
-    progressDates: { ...c.progressDates },
-    documents: []
-  }
-  editingCandidateId.value = id
-  isEditMode.value = true
-  showForm.value = true
-}
+
+
+
 const deleteCandidate = async id => {
   const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true })
   if (!confirm.isConfirmed) return
@@ -254,30 +248,34 @@ const deleteCandidate = async id => {
 // Filter
 const filterCandidates = () => {
   const kw = globalSearch.value.toLowerCase()
+  const jobId = route.query.jobRequisitionId
+  const stage = route.query.stage
+
   filteredCandidates.value = candidates.value.filter(c => {
-    const all = [
+    const matchesSearch = [
       c.candidateId, c.fullName, c.recruiter,
       c.jobRequisitionId?.jobRequisitionId,
       c.jobRequisitionId?.departmentId?.name,
       c.jobRequisitionId?.jobTitle,
       c.applicationSource, c.hireDecision,
       ...Object.values(c.progressDates || {})
-    ].join(' ').toLowerCase()
-    return all.includes(kw)
+    ].join(' ').toLowerCase().includes(kw)
+
+    const matchesJobId = jobId ? c.jobRequisitionId?._id === jobId : true
+    const matchesStage = stage ? c.progress === stage : true
+
+    return matchesSearch && matchesJobId && matchesStage
   })
 }
-watch(globalSearch, filterCandidates)
+
 
 // Fetch
 const fetchCandidates = async () => {
   const res = await axios.get('/api/candidates')
   candidates.value = res.data
-  filterCandidates()
+  filterCandidates() // make sure filter runs immediately on updated data
 }
-const fetchJobRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
-  jobRequisitions.value = res.data
-}
+
 const fetchDepartments = async () => {
   const res = await axios.get('/api/departments?type=White Collar')
   departments.value = res.data
@@ -287,17 +285,67 @@ const fetchRecruiters = async () => {
   recruiters.value = res.data.map(r => r.name)
 }
 
-// Dropdown Logic
-const onDepartmentChange = () => {
-  const d = departments.value.find(dep => dep._id === form.value.departmentId)
-  jobTitles.value = d?.jobTitles || []
+
+const jobRequisitionOptions = ref([])
+const form = ref({
+  name: '', jobRequisitionId: '', department: '', jobTitle: '', recruiter: '',
+  applicationSource: '', hireDecision: 'Candidate in Process',
+  progress: 'Application',
+  progressDates: { Application: new Date().toISOString().split('T')[0] },
+  documents: []
+})
+
+const updateRequisitionDetails = async (jobId) => {
+  const res = await axios.get(`/api/job-requisitions/${jobId}`)
+  const job = res.data
+  form.value.department = job.departmentId?.name || ''
+  form.value.jobTitle = job.jobTitle || ''
+  form.value.recruiter = job.recruiter || ''
 }
-const assignBestRequisition = () => {
-  const matches = jobRequisitions.value
-    .filter(j => j.jobTitle === form.value.jobTitle && j.status === 'Vacant')
-    .sort((a, b) => (a.offerCount || 0) - (b.offerCount || 0))
-  form.value.jobRequisitionId = matches[0]?._id || ''
+
+const fetchJobRequisitions = async () => {
+  const res = await axios.get('/api/job-requisitions')
+  jobRequisitionOptions.value = res.data
+    .filter(j => j.status === 'Vacant')
+    .map(j => ({
+      ...j,
+      displayName: `${j.jobRequisitionId} - ${j.jobTitle}`
+    }))
 }
+
+const resetForm = () => {
+  form.value = {
+    name: '', jobRequisitionId: '', department: '', jobTitle: '', recruiter: '',
+    applicationSource: '', hireDecision: 'Candidate in Process',
+    progress: 'Application',
+    progressDates: { Application: new Date().toISOString().split('T')[0] },
+    documents: []
+  }
+  showForm.value = false
+  isEditMode.value = false
+  editingCandidateId.value = null
+}
+
+
+const editCandidate = (candidate) => {
+  showForm.value = true
+  isEditMode.value = true
+  editingCandidateId.value = candidate._id
+
+  form.value = {
+    name: candidate.fullName,
+    jobRequisitionId: candidate.jobRequisitionId?._id || '',
+    department: candidate.jobRequisitionId?.departmentId?.name || '',
+    jobTitle: candidate.jobRequisitionId?.jobTitle || '',
+    recruiter: candidate.recruiter || '',
+    applicationSource: candidate.applicationSource,
+    hireDecision: candidate.hireDecision,
+    progress: candidate.progress,
+    progressDates: { ...candidate.progressDates },
+    documents: []
+  }
+}
+
 
 // Excel Export
 const exportToExcel = () => {

@@ -9,7 +9,7 @@
       Department
     </v-btn>
     <v-btn :class="currentRoute === 'requisitions' ? 'active-tab' : ''" @click="goTo('/whitecollar/requisitions')">
-      Job Requisition
+      Job Openings
     </v-btn>
     <v-btn :class="currentRoute === 'candidates' ? 'active-tab' : ''" @click="goTo('/whitecollar/candidates')">
       Candidates
@@ -21,16 +21,14 @@
         <span class="text-h6">White Collar Departments</span>
         <v-spacer />
         <!-- Recruiter Toggle Button with Badge -->
-        <v-tooltip location="bottom">
-          <template #activator="{ props }">
-            <v-btn icon size="small" v-bind="props" color="indigo" @click="toggleRecruiterSection">
-              <v-badge :content="globalRecruiters.length" color="red" offset-x="4" offset-y="4">
-                <v-icon size="22">mdi-account-group</v-icon>
-              </v-badge>
-            </v-btn>
-          </template>
-          <span>{{ showRecruiterSection ? 'Hide Recruiters' : 'Manage Recruiters' }}</span>
-        </v-tooltip>
+        <div class="recruiter-button" @click="toggleRecruiterSection">
+          <v-btn icon size="small" color="indigo">
+            <v-badge :content="globalRecruiters.length" color="red" offset-x="4" offset-y="4">
+              <v-icon size="22">mdi-account-group</v-icon>
+            </v-badge>
+          </v-btn>
+          <span class="recruiter-label">{{ showRecruiterSection ? 'Hide Recruiters' : 'Manage Recruiters' }}</span>
+        </div>
       </v-card-title>
 
       <!-- Recruiter Section -->
@@ -166,7 +164,7 @@ const fetchDepartments = async () => {
     Swal.fire('Error', 'Failed to fetch departments', 'error')
   }
 }
-
+ 
 const fetchGlobalRecruiters = async () => {
   try {
     const res = await axios.get('http://localhost:5000/api/departments/global-recruiters')
@@ -356,6 +354,20 @@ onMounted(() => {
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
+
+.recruiter-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.recruiter-label {
+  font-size: 0.85rem;
+  color: #1976d2;
+  font-weight: 500;
+}
+
 
 
 </style>

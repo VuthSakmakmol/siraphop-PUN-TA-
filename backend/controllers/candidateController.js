@@ -109,17 +109,23 @@ exports.getCandidateById = async (req, res) => {
 // ✅ Update Candidate
 exports.updateCandidate = async (req, res) => {
   try {
-    const { name, email, phone, gender, applicationSource, jobRequisitionId, hireDecision } = req.body;
+    const {
+      name,
+      gender,
+      applicationSource,
+      jobRequisitionId,
+      hireDecision
+    } = req.body;
+
     const updatedFields = {
       fullName: name,
-      email,
-      phone,
       gender,
       applicationSource,
       jobRequisitionId,
       hireDecision
     };
 
+    // ✅ Handle uploaded documents (optional)
     if (req.files && req.files.length > 0) {
       updatedFields.documents = req.files.map(file => ({
         filename: file.filename,
@@ -130,10 +136,37 @@ exports.updateCandidate = async (req, res) => {
       }));
     }
 
-    const candidate = await Candidate.findByIdAndUpdate(req.params.id, updatedFields, { new: true });
-    if (!candidate) return res.status(404).json({ message: 'Candidate not found' });
+    // ✅ Fetch candidate and job
+    const candidate = await Candidate.findById(req.params.id);
+    if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
 
-    res.status(200).json({ message: '✅ Candidate updated successfully', candidate });
+    const job = await JobRequisition.findById(candidate.jobRequisitionId);
+
+    // ✅ Handle "Candidate Refusal" or "Not Hired" after JobOffer
+    if (
+      ['Candidate Refusal', 'Not Hired'].includes(hireDecision) &&
+      candidate._offerCounted &&
+      job
+    ) {
+      // Decrease offer count and revert status if needed
+      job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
+      candidate._offerCounted = false;
+
+      if (job.offerCount < job.targetCandidates) {
+        job.status = 'Vacant';
+      }
+
+      await job.save();
+    }
+
+    // ✅ Apply updates to candidate
+    Object.assign(candidate, updatedFields);
+    await candidate.save();
+
+    res.status(200).json({
+      message: '✅ Candidate updated successfully',
+      candidate
+    });
 
   } catch (err) {
     console.error('❌ Update error:', err);
@@ -159,10 +192,6 @@ exports.updateCandidateProgress = async (req, res) => {
       return res.status(400).json({ message: '🚫 Cannot update progress. Job is canceled.' });
     }
 
-    if (['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision)) {
-      return res.status(400).json({ message: `🚫 Progress is locked due to decision: ${candidate.hireDecision}` });
-    }
-
     const stageOrder = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
     const currentIndex = stageOrder.indexOf(candidate.progress);
     const newIndex = stageOrder.indexOf(newStage);
@@ -171,11 +200,23 @@ exports.updateCandidateProgress = async (req, res) => {
       return res.status(400).json({ message: '❌ Invalid stage name' });
     }
 
+    // ✅ Allow date update for previously set stage, block forward movement if decision is final
+    if (
+      ['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision) &&
+      newIndex > currentIndex
+    ) {
+      return res.status(400).json({
+        message: `🚫 Progress is locked due to decision: ${candidate.hireDecision}`
+      });
+    }
+
+    // ✅ Always allow date update
     candidate.progressDates = {
       ...candidate.progressDates,
       [newStage]: new Date(progressDate)
     };
 
+    // ✅ Only allow forward movement of progress
     if (newIndex > currentIndex) {
       candidate.progress = newStage;
     }
@@ -194,11 +235,10 @@ exports.updateCandidateProgress = async (req, res) => {
       }
     }
 
-    // ✅ Onboard logic with hiring cost implication
+    // ✅ Onboard logic
     if (newStage === 'Onboard' && !candidate._onboardCounted) {
       job.onboardCount = (job.onboardCount || 0) + 1;
 
-      // Reduce offer count if previously counted
       if (candidate._offerCounted) {
         job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
       }
@@ -206,12 +246,10 @@ exports.updateCandidateProgress = async (req, res) => {
       candidate._onboardCounted = true;
       candidate.hireDecision = 'Hired';
 
-      // Fill job if onboarded reaches target
       if (job.onboardCount >= job.targetCandidates) {
         job.status = 'Filled';
       }
 
-      // ✅ (Optional) Log cost-per-hire for debugging
       console.log(`💰 ${candidate.fullName} counted for cost. HiringCost = $${job.hiringCost}, onboarded = ${job.onboardCount}`);
     }
 
@@ -226,7 +264,35 @@ exports.updateCandidateProgress = async (req, res) => {
   }
 };
 
+// ✅ Check active JobOffer candidates (return actual count instead of boolean)
+exports.getActiveOffersByRequisitionId = async (req, res) => {
+  try {
+    const { requisitionId } = req.params;
 
+    const count = await Candidate.countDocuments({
+      jobRequisitionId: requisitionId,
+      progress: 'JobOffer',
+      hireDecision: { $in: ['Candidate in Process', null] }
+    });
+
+    res.json({ count });
+  } catch (err) {
+    console.error('❌ Active offer check failed:', err.message);
+    res.status(500).json({ message: '❌ Failed to fetch active offers' });
+  }
+};
+
+// Check if there are any candidates still in JobOffer stage
+exports.checkActiveOffers = async (req, res) => {
+  const { requisitionId } = req.params
+  const hasActiveOffers = await Candidate.exists({
+    jobRequisitionId: requisitionId,
+    progress: 'JobOffer',
+    hireDecision: { $in: ['Candidate in Process', null] }
+  })
+
+  res.json({ hasActiveOffers: !!hasActiveOffers })
+}
 
 // ✅ Upload more documents
 exports.uploadMoreDocuments = async (req, res) => {

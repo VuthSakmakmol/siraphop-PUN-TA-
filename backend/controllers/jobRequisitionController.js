@@ -11,11 +11,30 @@ exports.getJobRequisitions = async (req, res) => {
     if (req.query.type) filter.type = req.query.type;
 
     const jobRequisitions = await JobRequisition.find(filter).populate('departmentId');
-    res.json(jobRequisitions);
+
+    const withCounts = await Promise.all(jobRequisitions.map(async (job) => {
+      const offerCount = await getOfferCount(job._id)
+      return {
+        ...job.toObject(),
+        offerCount
+      }
+    }))
+
+    res.json(withCounts);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching job requisitions' });
   }
 };
+
+
+const getOfferCount = async (jobId) => {
+  return await Candidate.countDocuments({
+    jobRequisitionId: jobId,
+    progress: 'JobOffer',
+    hireDecision: { $in: ['Candidate in Process', null] }
+  })
+}
+
 
 // ✅ Get single job requisition
 exports.getJobRequisitionById = async (req, res) => {
@@ -177,3 +196,5 @@ exports.updateRequisitionCounts = async (jobRequisitionId) => {
     status: newStatus
   });
 };
+
+

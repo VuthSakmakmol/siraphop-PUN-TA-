@@ -27,5 +27,8 @@ router.put('/:id/lock', candidateController.lockCandidateProgress);
 router.delete('/:id', candidateController.deleteCandidate);
 router.post('/:id/documents', upload.array('documents'), candidateController.uploadMoreDocuments);
 
+router.get('/candidates/requisition/:requisitionId/active-offers', candidateController.checkActiveOffers)
+router.get('/requisition/:requisitionId/active-offers', candidateController.getActiveOffersByRequisitionId);
+
 // ✅ Export routes
 module.exports = router;

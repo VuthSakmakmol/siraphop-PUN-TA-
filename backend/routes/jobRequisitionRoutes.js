@@ -27,4 +27,6 @@ router.put('/:id', updateJobRequisition);
 // 🔹 Delete job requisition
 router.delete('/:id', deleteJobRequisition);
 
+
+
 module.exports = router;

@@ -1,15 +1,16 @@
 <template>
   <v-container>
-    <!-- Mini Navbar -->
+    <!-- Navbar -->
     <div class="whitecollar-nav">
       <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">Dashboard</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">Department</v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Requisition</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Openings</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">Candidates</v-btn>
     </div>
 
+    <!-- Main Card -->
     <v-card class="pa-5" elevation="5">
-      <!-- Toggle Form Button -->
+      <!-- Toggle Form -->
       <v-card-title>
         <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
           {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
@@ -36,25 +37,21 @@
                   :disabled="isEditing"
                 />
               </v-col>
-
               <v-col cols="12" md="4">
                 <v-select
                   v-model="form.jobTitle"
                   label="Job Title"
                   :items="jobTitles"
                   :disabled="!jobTitles.length || isEditing"
-                  outlined dense
-                  required
+                  outlined dense required
                 />
               </v-col>
-
               <v-col cols="12" md="4">
                 <v-select
                   v-model="form.recruiter"
                   label="Recruiter"
                   :items="combinedRecruiters"
-                  outlined dense
-                  required
+                  outlined dense required
                   placeholder="Select recruiter"
                 />
               </v-col>
@@ -68,7 +65,6 @@
                   outlined dense required
                 />
               </v-col>
-
               <v-col cols="12" md="3">
                 <v-select
                   v-model="form.status"
@@ -78,7 +74,6 @@
                   :class="statusColorClass"
                 />
               </v-col>
-
               <v-col cols="12" md="3">
                 <v-text-field
                   v-model.number="form.hiringCost"
@@ -89,7 +84,7 @@
                 />
               </v-col>
 
-              <!-- Opening Date -->
+              <!-- Opening and Start Dates -->
               <v-col cols="12" md="3">
                 <v-menu v-model="openingDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
@@ -109,8 +104,6 @@
                   }" />
                 </v-menu>
               </v-col>
-
-              <!-- Start Date -->
               <v-col cols="12" md="3">
                 <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
@@ -130,7 +123,7 @@
                 </v-menu>
               </v-col>
 
-              <!-- Submit -->
+              <!-- Submit Button -->
               <v-col cols="12" md="3">
                 <v-btn color="success" type="submit" class="mt-2" rounded>
                   {{ isEditing ? 'Update' : 'Create' }}
@@ -141,8 +134,7 @@
         </div>
       </v-expand-transition>
 
-
-      <!-- 🔍 Global Filter + Export -->
+      <!-- Search + Export -->
       <v-row dense class="my-4">
         <v-col cols="12" md="6">
           <v-text-field
@@ -183,31 +175,30 @@
               <td>{{ formatDate(item.openingDate) }}</td>
               <td>{{ item.recruiter }}</td>
               <td>
-                <router-link :to="{ path: '/whitecollar/candidates', query: { jobRequisitionId: item._id } }" class="status-badge-link">
+                <v-btn variant="text" class="px-0" style="text-transform:none" @click="viewStageCandidates(item)">
                   <span :class="[
-                    'status-badge',
-                    {
-                      'status-vacant': item.status === 'Vacant',
-                      'status-suspended': item.status === 'Suspended',
-                      'status-filled': item.status === 'Filled',
-                      'status-cancel': item.status === 'Cancel'
-                    }
-                  ]">
+                      'status-badge',
+                      {
+                        'status-vacant': item.status === 'Vacant',
+                        'status-filled': item.status === 'Filled',
+                        'status-cancel': item.status === 'Cancel',
+                        'status-suspended-green': item.status === 'Suspended' && Number(item.offerCount) > 0,
+                        'status-suspended-gray': item.status === 'Suspended' && Number(item.offerCount) === 0
+                      }
+                    ]">
                     {{ item.status }}
                   </span>
-                </router-link>
+                </v-btn>
               </td>
               <td>{{ item.hiringCost?.toFixed(2) }}$</td>
               <td>{{ formatDate(item.startDate) }}</td>
               <td>
-                <div class="action-buttons">
-                  <v-btn icon size="small" color="blue" @click="editRequisition(item)">
-                    <v-icon>mdi-pencil</v-icon>
-                  </v-btn>
-                  <v-btn icon size="small" color="red" @click="deleteRequisition(item._id)">
-                    <v-icon>mdi-delete</v-icon>
-                  </v-btn>
-                </div>
+                <v-btn icon size="small" color="blue" @click="editRequisition(item)">
+                  <v-icon>mdi-pencil</v-icon>
+                </v-btn>
+                <v-btn icon size="small" color="red" @click="deleteRequisition(item._id)">
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
               </td>
             </tr>
           </tbody>
@@ -216,7 +207,6 @@
     </v-card>
   </v-container>
 </template>
-
 
 
 <script setup>
@@ -311,55 +301,89 @@ const fetchRequisitions = async () => {
   jobRequisitions.value = res.data.map(j => ({
     ...j,
     remainingCandidates: j.targetCandidates - j.onboardCount,
-    departmentName: j.departmentId?.name || '—'
+    departmentName: j.departmentId?.name || '—',
+    offerCount: Number(j.offerCount) || 0
   }))
 }
 
+const viewStageCandidates = (item) => {
+  const stage = item.status === 'Filled' ? 'Onboard' : item.status === 'Suspended' ? 'JobOffer' : null
+  if (stage) {
+    router.push({ path: '/whitecollar/candidates', query: { jobRequisitionId: item._id, stage } })
+  }
+}
 
 const exportToExcel = () => {
-  const data = jobRequisitions.value.map(item => ({
-    'Job ID': item.jobRequisitionId,
-    'Department': item.departmentName || '—',
-    'Job Title': item.jobTitle,
-    'Recruiter': item.recruiter,
-    'Target': item.targetCandidates,
-    'Hiring Cost': item.hiringCost,
-    'Status': item.status,
-    'Opening Date': formatDate(item.openingDate),
-    'Start Date': formatDate(item.startDate)
-  }))
+  if (exportInProgress.value) return
+  exportInProgress.value = true
 
-  const worksheet = XLSX.utils.json_to_sheet(data)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
+  try {
+    const data = jobRequisitions.value.map(item => ({
+      'Job ID': item.jobRequisitionId,
+      'Department': item.departmentName || '—',
+      'Job Title': item.jobTitle,
+      'Recruiter': item.recruiter,
+      'Target': item.targetCandidates,
+      'Hiring Cost': item.hiringCost,
+      'Status': item.status,
+      'Opening Date': formatDate(item.openingDate),
+      'Start Date': formatDate(item.startDate)
+    }))
 
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  })
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
 
-  saveAs(blob, 'White_Collar_Job_Requisitions.xlsx')
+    saveAs(blob, 'White_Collar_Job_Requisitions.xlsx')
+  } finally {
+    exportInProgress.value = false
+  }
 }
-
-
 const handleSubmit = async () => {
   const payload = { ...form.value }
+
+  if (!payload.recruiter) {
+    return Swal.fire('⚠ Missing Recruiter', 'Please select a recruiter before submitting.', 'warning')
+  }
+
   try {
     if (isEditing.value) {
+      if (form.value.status === 'Vacant') {
+        const check = await axios.get(`/api/candidates/requisition/${editingId.value}/active-offers`)
+        const offerCount = check.data.count || 0
+
+        if (offerCount > 0) {
+          return Swal.fire({
+            icon: 'warning',
+            title: '⚠ Cannot set to Vacant',
+            html: `There are still <b>${offerCount}</b> candidate(s) in <b>Job Offer</b> stage.<br>Please resolve them first.`,
+            confirmButtonColor: '#7367f0'
+          })
+        }
+      }
+
       await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
       Swal.fire('✅ Updated', 'Job requisition updated successfully', 'success')
     } else {
       await axios.post('/api/job-requisitions', payload)
       Swal.fire('✅ Created', 'Job requisition created successfully', 'success')
     }
+
     fetchRequisitions()
     resetForm()
     showForm.value = false
+
   } catch (err) {
     const msg = err?.response?.data?.message || 'Failed to submit'
     Swal.fire('❌ Error', msg, 'error')
   }
 }
+
+
 
 const editRequisition = (job) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -430,7 +454,6 @@ onMounted(() => {
 })
 </script>
 
-
 <style scoped>
 .v-table {
   white-space: nowrap;
@@ -460,4 +483,36 @@ onMounted(() => {
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
+.status-badge {
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+}
+.status-vacant {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+.status-filled {
+  background-color: #ffebee;
+  color: #c62828;
+}
+.status-cancel {
+  background-color: #ffcdd2;
+  color: #b71c1c;
+}
+.status-suspended-green {
+  background-color: #c8e6c9;
+  color: #388e3c;
+}
+
+.status-suspended-gray {
+  background-color: #f2f2f2;
+  color: #777;
+}
+.status-suspended-yellow {
+  background-color: #fff8e1;
+  color: #f9a825;
+}
 </style>
+
