@@ -13,7 +13,7 @@
       <!-- Toggle Form -->
       <v-card-title>
         <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
-          {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
+          {{ showForm ? 'Close Form' : '➕ Create Job Requisitions' }}
         </v-btn>
         <v-spacer />
       </v-card-title>
@@ -146,7 +146,7 @@
         </v-col>
         <v-col cols="12" md="6" class="text-right">
           <v-btn color="success" class="mt-1" @click="exportToExcel" rounded>
-            📤 Export to Excel
+            📤 Export
           </v-btn>
         </v-col>
       </v-row>
@@ -298,7 +298,9 @@ const onDepartmentChange = () => {
 
 const fetchRequisitions = async () => {
   const res = await axios.get('/api/job-requisitions')
-  jobRequisitions.value = res.data.map(j => ({
+  jobRequisitions.value = res.data
+  .filter(j => j.type === 'White Collar') // ⬅️ Add this line
+  .map(j => ({
     ...j,
     remainingCandidates: j.targetCandidates - j.onboardCount,
     departmentName: j.departmentId?.name || '—',
@@ -455,6 +457,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.v-btn {
+  text-transform: none !important;
+}
+
 .v-table {
   white-space: nowrap;
   overflow-x: auto;

@@ -51,63 +51,92 @@
           </div>
         </v-expand-transition>
 
-        <!-- Filters -->
-        <v-divider class="my-4" />
-        <div class="d-flex justify-space-between align-center">
-          <v-btn color="success" @click="exportToExcel">Export</v-btn>
-          <v-text-field v-model="globalSearch" label="Search" prepend-inner-icon="mdi-magnify" clearable />
-        </div>
 
-        <!-- Table -->
+        <!-- Filter -->
+        <v-row dense class="my-4">
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="globalSearch"
+              label=" Search"
+              placeholder="Search"
+              prepend-inner-icon="mdi-magnify"
+              dense
+              outlined
+              clearable
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" md="6" class="text-right">
+            <v-btn color="success" class="mt-1" @click="exportToExcel" rounded>
+              📤 Export
+            </v-btn>
+          </v-col>
+        </v-row>
+
+
         <v-table class="mt-3">
-          <thead>
-            <tr>
-              <th>Candidate ID</th>
-              <th>Job ID</th>
-              <th>Department</th>
-              <th>Job Title</th>
-              <th>Recruiter</th>
-              <th>Name</th>
-              <th>Source</th>
-              <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
-              <th>Decision</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in filteredCandidates" :key="c._id">
-              <td>{{ c.candidateId }}</td>
-              <td>{{ c.jobRequisitionCode || '-' }}</td>
-              <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
-              <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
-              <td>{{ c.recruiter }}</td>
-              <td>{{ c.fullName }}</td>
-              <td>{{ c.applicationSource }}</td>
-              <td v-for="label in stageLabels" :key="label">
-                <v-btn
+        <thead>
+          <tr>
+            <th>Candidate ID</th>
+            <th>Job ID</th>
+            <th>Department</th>
+            <th>Job Title</th>
+            <th>Recruiter</th>
+            <th>Name</th>
+            <th>Source</th>
+            <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
+            <th>Final Decision</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="c in filteredCandidates" :key="c._id">
+            <td>{{ c.candidateId }}</td>
+            <td>{{ c.jobRequisitionCode || '-' }}</td>
+            <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
+            <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
+            <td>{{ c.recruiter }}</td>
+            <td>{{ c.fullName }}</td>
+            <td>{{ c.applicationSource }}</td>
+            <td v-for="label in stageLabels" :key="label">
+              <v-tooltip v-if="jobIsLocked(c)" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
                     class="stage-btn"
+                    :disabled="true"
                     :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
-                    @click="selectDate(c, label)"
                   >
-                  {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                </v-btn>
-              </td>
-              <td>{{ c.hireDecision }}</td>
-              <td>
-                <v-menu>
-                  <template #activator="{ props }">
-                    <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
-                  </template>
-                  <v-list>
-                    <v-list-item @click="editCandidate(c)"><v-list-item-title>Edit</v-list-item-title></v-list-item>
-                    <v-list-item @click="goToCandidateDetail(c._id)"><v-list-item-title>Detail</v-list-item-title></v-list-item>
-                    <v-list-item @click="deleteCandidate(c._id)"><v-list-item-title>Delete</v-list-item-title></v-list-item>
-                  </v-list>
-                </v-menu>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+                    {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                  </v-btn>
+                </template>
+                <span>This job offer is full. Please change Job ID to continue.</span>
+              </v-tooltip>
+              <v-btn
+                v-else
+                class="stage-btn"
+                :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
+                @click="selectDate(c, label)"
+              >
+                {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
+              </v-btn>
+            </td>
+            <td>{{ c.hireDecision }}</td>
+            <td>
+              <v-menu>
+                <template #activator="{ props }">
+                  <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
+                </template>
+                <v-list>
+                  <v-list-item @click="editCandidate(c)"><v-list-item-title>Edit</v-list-item-title></v-list-item>
+                  <v-list-item @click="goToCandidateDetail(c._id)"><v-list-item-title>Detail</v-list-item-title></v-list-item>
+                  <v-list-item @click="deleteCandidate(c._id)"><v-list-item-title>Delete</v-list-item-title></v-list-item>
+                </v-list>
+              </v-menu>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
 
         <!-- Stage Dialog -->
         <v-dialog v-model="stageDialog.show" max-width="400">
@@ -126,256 +155,223 @@
     </v-container>
   </template>
 
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
+import Swal from 'sweetalert2'
+import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import * as XLSX from 'xlsx'
 
+dayjs.extend(utc); dayjs.extend(timezone)
+const tz = 'Asia/Phnom_Penh'
 
-  <script setup>
-  import { ref, computed, watch, onMounted } from 'vue'
-  import { useRoute, useRouter } from 'vue-router'
-  import axios from 'axios'
-  import Swal from 'sweetalert2'
-  import dayjs from 'dayjs'
-  import timezone from 'dayjs/plugin/timezone'
-  import utc from 'dayjs/plugin/utc'
-  import * as XLSX from 'xlsx'
+const route = useRoute()
+const router = useRouter()
 
-  dayjs.extend(utc); dayjs.extend(timezone)
-  const tz = 'Asia/Phnom_Penh'
+const showForm = ref(false)
+const isEditMode = ref(false)
+const editingCandidateId = ref(null)
+const candidates = ref([])
+const filteredCandidates = ref([])
 
-  const route = useRoute()
-  const router = useRouter()
+const departments = ref([])
+const recruiters = ref([])
+const globalSearch = ref('')
 
-  // State
-  const showForm = ref(false)
-  const isEditMode = ref(false)
-  const editingCandidateId = ref(null)
-  const candidates = ref([])
-  const filteredCandidates = ref([])
+const currentDate = ref(dayjs().tz(tz).format('YYYY-MM-DD'))
 
-  const departments = ref([])
-  const recruiters = ref([])
-  const globalSearch = ref('')
-
-  const currentDate = ref(dayjs().tz(tz).format('YYYY-MM-DD'))
-
-  // 🔁 Check every 60 seconds to auto-update day at midnight
-  setInterval(() => {
-    const now = dayjs().tz(tz).format('YYYY-MM-DD')
-    if (now !== currentDate.value) {
-      currentDate.value = now
-      filterCandidates()
-    }
-  }, 60 * 1000)
-
-  const isFutureDate = (dateStr) => {
-    if (!dateStr) return false
-    return dayjs(dateStr).format('YYYY-MM-DD') > currentDate.value
+setInterval(() => {
+  const now = dayjs().tz(tz).format('YYYY-MM-DD')
+  if (now !== currentDate.value) {
+    currentDate.value = now
+    filterCandidates()
   }
+}, 60 * 1000)
 
-  const isToday = (dateStr) => {
-    return dayjs(dateStr).format('YYYY-MM-DD') === currentDate.value
-  }
+const isFutureDate = (dateStr) => {
+  if (!dateStr) return false
+  return dayjs(dateStr).format('YYYY-MM-DD') > currentDate.value
+}
 
-  const getStageColorClass = (stage, dateStr) => {
-    if (!dateStr) return 'stage-default'
-    if (isFutureDate(dateStr)) return 'stage-future'
-    return 'stage-bold'
-  }
+const getStageColorClass = (stage, dateStr) => {
+  if (!dateStr) return 'stage-default'
+  if (isFutureDate(dateStr)) return 'stage-future'
+  return 'stage-bold'
+}
 
+const jobIsLocked = (c) => {
+  const isRestricted = !['JobOffer', 'Hired', 'Onboard'].includes(c.progress)
+  const offerReached = c.jobRequisitionId?.status !== 'Vacant'
+  return offerReached && isRestricted
+}
 
-  const stageDialog = ref({ show: false, candidate: null, stage: '', date: '' })
+const stageDialog = ref({ show: false, candidate: null, stage: '', date: '' })
+const stageLabels = ['Recieved Application', 'Sent to Manager', 'Interviews', 'JobOffer', 'Hired', 'Onboard']
+const stageMap = {
+  'Recieved Application': 'Application',
+  'Sent to Manager': 'ManagerReview',
+  'Interviews': 'Interview',
+  'JobOffer': 'JobOffer',
+  'Hired': 'Hired',
+  'Onboard': 'Onboard'
+}
+const stageDisplayNames = {
+  Application: 'Recieved Application',
+  ManagerReview: 'Sent to Manager',
+  Interview: 'Interviews',
+  JobOffer: 'Job Offer',
+  Hired: 'Hired',
+  Onboard: 'Onboard'
+}
 
-  const stageLabels = ['Recieved Application', 'Sent to Manager', 'Interviews', 'JobOffer', 'Hired', 'Onboard']
-  const stageMap = {
-    'Recieved Application': 'Application',
-    'Sent to Manager': 'ManagerReview',
-    'Interviews': 'Interview',
-    'JobOffer': 'JobOffer',
-    'Hired': 'Hired',
-    'Onboard': 'Onboard'
-  }
+const sources = ['Agency','FIF','Facebook','Job portal','LinkedIn','Telegram','Other']
+const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
+const currentRoute = computed(() => route.path.split('/')[2])
+const goTo = path => router.push(path)
+const goToCandidateDetail = id => router.push(`/whitecollar/candidates/${id}`)
+const formatDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
 
-  const stageDisplayNames = {
-    Application: 'Recieved Application',
-    ManagerReview: 'Sent to Manager',
-    Interview: 'Interviews',
-    JobOffer: 'Job Offer',
-    Hired: 'Hired',
-    Onboard: 'Onboard'
-  }
-
-
-
-
-  const stageColor = stage => ({
-    Application: 'stage-manager', ManagerReview: 'stage-manager', Interview: 'stage-interview',
-    JobOffer: 'stage-offer', Hired: 'stage-hired', Onboard: 'stage-onboard'
-  }[stage] || '')
-
-  const sources = ['Agency','FIF','Facebook','Job portal','LinkedIn','Telegram','Other']
-  const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
-  const currentRoute = computed(() => route.path.split('/')[2])
-  const goTo = path => router.push(path)
-  const goToCandidateDetail = id => router.push(`/whitecollar/candidates/${id}`)
-
-  const formatDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
-
-
-  // Date Select + Confirm
-  const selectDate = (c, label) => {
-    const backend = stageMap[label]
-    stageDialog.value = {
-      show: true,
-      candidate: c,
-      stage: backend,
-      date: c.progressDates?.[backend] || dayjs().tz(tz).format('YYYY-MM-DD')
-    }
-  }
-  const confirmStageDate = async () => {
-    const { candidate, stage, date } = stageDialog.value
-    stageDialog.value.show = false
-    try {
-      await axios.put(`/api/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
-      const index = candidates.value.findIndex(c => c._id === candidate._id)
-      if (index !== -1) {
-        candidates.value[index].progressDates[stage] = date
-        if (stage !== candidates.value[index].progress) {
-          candidates.value[index].progress = stage
-        }
-      }
-      Swal.fire('✅ Updated', `${stageDisplayNames[stage]} updated`, 'success')
-    } catch (err) {
-    if (err.response?.status === 409) {
-      Swal.fire({
-        icon: 'warning',
-        title: '⚠️ Job Offer Limit Reached',
-        text: err.response.data.message || 'Another candidate has already been offered this job.',
-        confirmButtonText: 'OK',
-        allowEnterKey: true
-      });
-    } else {
-      Swal.fire('❌ Error', 'Failed to update stage', 'error');
-    }
-  }
-
-  }
-
-  // Form
-  const handleFileUpload = files => form.value.documents = Array.isArray(files) ? files : [files]
-
-
-  const handleSubmit = async () => {
-    const fd = new FormData()
-    Object.keys(form.value).forEach(k => {
-      if (k !== 'documents') fd.append(k, form.value[k])
+const selectDate = async (c, label) => {
+  if (jobIsLocked(c)) {
+    await Swal.fire({
+      icon: 'error',
+      title: '🔒 Progress Locked',
+      text: 'Another candidate has already reached Job Offer for this Job ID. Please change Job ID to continue.',
+      confirmButtonText: 'OK', allowEnterKey: true
     })
-    form.value.documents.forEach(d => fd.append('documents', d))
+    return
+  }
+  const backend = stageMap[label]
+  stageDialog.value = {
+    show: true,
+    candidate: c,
+    stage: backend,
+    date: c.progressDates?.[backend] || dayjs().tz(tz).format('YYYY-MM-DD')
+  }
+}
 
-    const method = isEditMode.value ? 'put' : 'post'
-    const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
-    await axios[method](url, fd)
-    Swal.fire('✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'}`, 'success')
-    resetForm()
-    await fetchCandidates()
+const confirmStageDate = async () => {
+  const { candidate, stage, date } = stageDialog.value
+  stageDialog.value.show = false
+  try {
+    await axios.put(`/api/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
+    const index = candidates.value.findIndex(c => c._id === candidate._id)
+    if (index !== -1) {
+      candidates.value[index].progressDates[stage] = date
+      candidates.value[index].progress = stage
+    }
+    Swal.fire({ icon: 'success', title: 'Stage Updated ✅', text: `${stageDisplayNames[stage]} was successfully updated for candidate "${candidate.fullName}"`, confirmButtonText: 'OK', allowEnterKey: true })
+  } catch (err) {
+    const msg = err?.response?.data?.message || 'Progress update failed'
+    Swal.fire({ icon: 'error', title: '❌ Error', text: msg, confirmButtonText: 'Close', allowEnterKey: true })
+  }
+}
+
+const handleFileUpload = files => form.value.documents = Array.isArray(files) ? files : [files]
+
+const handleSubmit = async () => {
+  const fd = new FormData()
+  Object.keys(form.value).forEach(k => {
+    if (k !== 'documents') fd.append(k, form.value[k])
+  })
+  form.value.documents.forEach(d => fd.append('documents', d))
+
+  const method = isEditMode.value ? 'put' : 'post'
+  const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
+  const res = await axios[method](url, fd)
+  const updated = res.data.candidate
+
+  if (isEditMode.value) {
+    const jobRes = await axios.get(`/api/job-requisitions/${updated.jobRequisitionId}`)
+    updated.jobRequisitionId = jobRes.data
+    const index = candidates.value.findIndex(c => c._id === updated._id)
+    if (index !== -1) candidates.value[index] = updated
   }
 
+  Swal.fire('✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'}`, 'success')
+  resetForm()
+  await fetchCandidates()
+}
 
+const deleteCandidate = async id => {
+  const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true })
+  if (!confirm.isConfirmed) return
+  await axios.delete(`/api/candidates/${id}`)
+  await fetchCandidates()
+  Swal.fire('Deleted', '', 'success')
+}
 
-  const deleteCandidate = async id => {
-    const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true })
-    if (!confirm.isConfirmed) return
-    await axios.delete(`/api/candidates/${id}`)
-    await fetchCandidates()
-    Swal.fire('Deleted', '', 'success')
-  }
-
-  // Filter
-  const filterCandidates = () => {
+const filterCandidates = () => {
   const kw = globalSearch.value?.toLowerCase() || ''
   const jobId = route.query.jobRequisitionId
   const stage = route.query.stage
-
   filteredCandidates.value = candidates.value.filter(c => {
     const searchable = [
-      c.candidateId,
-      c.fullName,
-      c.recruiter,
-      c.jobRequisitionId?.jobRequisitionId,
-      c.jobRequisitionId?.departmentId?.name,
-      c.jobRequisitionId?.jobTitle,
-      c.applicationSource,
-      c.hireDecision,
-      ...Object.values(c.progressDates || {})
+      c.candidateId, c.fullName, c.recruiter, c.jobRequisitionId?.jobRequisitionId,
+      c.jobRequisitionId?.departmentId?.name, c.jobRequisitionId?.jobTitle,
+      c.applicationSource, c.hireDecision, ...Object.values(c.progressDates || {})
     ].join(' ').toLowerCase()
-
-    const matchesSearch = searchable.includes(kw)
-    const matchesJobId = jobId ? c.jobRequisitionId?._id === jobId : true
-    const matchesStage = stage ? c.progress === stage : true
-
-    return matchesSearch && matchesJobId && matchesStage
+    return searchable.includes(kw) && (!jobId || c.jobRequisitionId?._id === jobId) && (!stage || c.progress === stage)
   })
 }
-watch(globalSearch, () => {
+watch(globalSearch, filterCandidates)
+
+const fetchCandidates = async () => {
+  const res = await axios.get('/api/candidates?type=White%20Collar')
+  candidates.value = res.data
   filterCandidates()
+}
+
+const fetchDepartments = async () => {
+  const res = await axios.get('/api/departments?type=White Collar')
+  departments.value = res.data
+}
+const fetchRecruiters = async () => {
+  const res = await axios.get('/api/departments/global-recruiters')
+  recruiters.value = res.data.map(r => r.name)
+}
+
+const jobRequisitionOptions = ref([])
+const form = ref({
+  name: '', jobRequisitionId: '', department: '', jobTitle: '', recruiter: '',
+  applicationSource: '', hireDecision: 'Candidate in Process',
+  progress: 'Application',
+  progressDates: { Application: new Date().toISOString().split('T')[0] },
+  documents: []
 })
 
+const updateRequisitionDetails = async (jobId) => {
+  const res = await axios.get(`/api/job-requisitions/${jobId}`)
+  const job = res.data
+  form.value.department = job.departmentId?.name || ''
+  form.value.jobTitle = job.jobTitle || ''
+  form.value.recruiter = job.recruiter || ''
+}
 
+const fetchJobRequisitions = async () => {
+  const res = await axios.get('/api/job-requisitions')
+  jobRequisitionOptions.value = res.data
+    .filter(j => j.status === 'Vacant')
+    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
+}
 
-  const fetchCandidates = async () => {
-    const res = await axios.get('/api/candidates?type=White%20Collar');
-    candidates.value = res.data;
-    filterCandidates();
-  };
-
-  const fetchDepartments = async () => {
-    const res = await axios.get('/api/departments?type=White Collar')
-    departments.value = res.data
-  }
-  const fetchRecruiters = async () => {
-    const res = await axios.get('/api/departments/global-recruiters')
-    recruiters.value = res.data.map(r => r.name)
-  }
-
-
-  const jobRequisitionOptions = ref([])
-  const form = ref({
+const resetForm = () => {
+  form.value = {
     name: '', jobRequisitionId: '', department: '', jobTitle: '', recruiter: '',
     applicationSource: '', hireDecision: 'Candidate in Process',
     progress: 'Application',
     progressDates: { Application: new Date().toISOString().split('T')[0] },
     documents: []
-  })
-
-  const updateRequisitionDetails = async (jobId) => {
-    const res = await axios.get(`/api/job-requisitions/${jobId}`)
-    const job = res.data
-    form.value.department = job.departmentId?.name || ''
-    form.value.jobTitle = job.jobTitle || ''
-    form.value.recruiter = job.recruiter || ''
   }
+  showForm.value = false
+  isEditMode.value = false
+  editingCandidateId.value = null
+}
 
-  const fetchJobRequisitions = async () => {
-    const res = await axios.get('/api/job-requisitions')
-    jobRequisitionOptions.value = res.data
-      .filter(j => j.status === 'Vacant')
-      .map(j => ({
-        ...j,
-        displayName: `${j.jobRequisitionId} - ${j.jobTitle}`
-      }))
-  }
-
-  const resetForm = () => {
-    form.value = {
-      name: '', jobRequisitionId: '', department: '', jobTitle: '', recruiter: '',
-      applicationSource: '', hireDecision: 'Candidate in Process',
-      progress: 'Application',
-      progressDates: { Application: new Date().toISOString().split('T')[0] },
-      documents: []
-    }
-    showForm.value = false
-    isEditMode.value = false
-    editingCandidateId.value = null
-  }
-  const editCandidate = (candidate) => {
+const editCandidate = (candidate) => {
   showForm.value = true
   isEditMode.value = true
   editingCandidateId.value = candidate._id
@@ -384,10 +380,8 @@ watch(globalSearch, () => {
 
 watch([jobRequisitionOptions, editingCandidateId], ([jobs, id]) => {
   if (!isEditMode.value || !id || !jobs.length) return
-
   const candidate = candidates.value.find(c => c._id === id)
   const matchingJob = jobs.find(j => j._id === candidate?.jobRequisitionId?._id)
-
   if (candidate) {
     form.value = {
       name: candidate.fullName,
@@ -404,40 +398,37 @@ watch([jobRequisitionOptions, editingCandidateId], ([jobs, id]) => {
   }
 })
 
-  // Excel Export
-  const exportToExcel = () => {
-    const rows = candidates.value.map(c => ({
-      'Candidate ID': c.candidateId,
-      'Job ID': c.jobRequisitionId?.jobRequisitionId || '',
-      'Department': c.jobRequisitionId?.departmentId?.name || '',
-      'Job Title': c.jobRequisitionId?.jobTitle || '',
-      'Recruiter': c.recruiter,
-      'Name': c.fullName,
-      'Source': c.applicationSource,
-      'Application': formatDate(c.progressDates?.Application),
-      'Manager Review': formatDate(c.progressDates?.ManagerReview),
-      'Interview': formatDate(c.progressDates?.Interview),
-      'Job Offer': formatDate(c.progressDates?.JobOffer),
-      'Hired': formatDate(c.progressDates?.Hired),
-      'Onboard': formatDate(c.progressDates?.Onboard),
-      'Decision': c.hireDecision
-    }))
-    const ws = XLSX.utils.json_to_sheet(rows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Candidates')
-    XLSX.writeFile(wb, 'whitecollar_candidates.xlsx')
-  }
+const exportToExcel = () => {
+  const rows = candidates.value.map(c => ({
+    'Candidate ID': c.candidateId,
+    'Job ID': c.jobRequisitionId?.jobRequisitionId || '',
+    'Department': c.jobRequisitionId?.departmentId?.name || '',
+    'Job Title': c.jobRequisitionId?.jobTitle || '',
+    'Recruiter': c.recruiter,
+    'Name': c.fullName,
+    'Source': c.applicationSource,
+    'Application': formatDate(c.progressDates?.Application),
+    'Manager Review': formatDate(c.progressDates?.ManagerReview),
+    'Interview': formatDate(c.progressDates?.Interview),
+    'Job Offer': formatDate(c.progressDates?.JobOffer),
+    'Hired': formatDate(c.progressDates?.Hired),
+    'Onboard': formatDate(c.progressDates?.Onboard),
+    'Decision': c.hireDecision
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Candidates')
+  XLSX.writeFile(wb, 'whitecollar_candidates.xlsx')
+}
 
-  onMounted(() => {
-    watch([() => route.query.jobRequisitionId, () => route.query.stage], () => {
-      filterCandidates()
-    })
-    fetchCandidates()
-    fetchDepartments()
-    fetchJobRequisitions()
-    fetchRecruiters()
-  })
-  </script>
+onMounted(() => {
+  watch([() => route.query.jobRequisitionId, () => route.query.stage], () => filterCandidates())
+  fetchCandidates()
+  fetchDepartments()
+  fetchJobRequisitions()
+  fetchRecruiters()
+})
+</script>
 
   <style scoped>
   .v-table { overflow-x: auto; white-space: nowrap; }
