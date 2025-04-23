@@ -1,11 +1,9 @@
-// routes/candidateRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const candidateController = require('../controllers/candidateController');
 
-// ✅ Multer setup
+// ✅ Multer storage config for document upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/candidates/');
@@ -15,20 +13,40 @@ const storage = multer.diskStorage({
     cb(null, `${uniqueSuffix}-${file.originalname}`);
   }
 });
+
 const upload = multer({ storage });
 
-// ✅ Routes
+// ✅ ROUTES
+
+// Get all candidates
 router.get('/', candidateController.getCandidates);
+
+// Get a candidate by ID
 router.get('/:id', candidateController.getCandidateById);
+
+// Create candidate with document upload
 router.post('/', upload.array('documents'), candidateController.createCandidate);
+
+// Update candidate (general info + documents)
+router.put('/:id', upload.array('documents'), candidateController.updateCandidate);
+
+// Update candidate stage progress
 router.put('/:id/progress', candidateController.updateCandidateProgress);
-router.put('/:id', upload.array('documents'), candidateController.updateCandidate); // ✅ Fixed
+
+// Lock/unlock candidate (e.g., filled job)
 router.put('/:id/lock', candidateController.lockCandidateProgress);
-router.delete('/:id', candidateController.deleteCandidate);
+
+// Upload additional documents to an existing candidate
 router.post('/:id/documents', upload.array('documents'), candidateController.uploadMoreDocuments);
 
-router.get('/candidates/requisition/:requisitionId/active-offers', candidateController.checkActiveOffers)
+// Delete a candidate
+router.delete('/:id', candidateController.deleteCandidate);
+
+// Check if any candidate has active offer for a requisition
 router.get('/requisition/:requisitionId/active-offers', candidateController.getActiveOffersByRequisitionId);
 
-// ✅ Export routes
+// Check if offer/hire already exists for a requisition (boolean)
+router.get('/requisition/:requisitionId/offer-check', candidateController.checkActiveOffers);
+
+// ✅ Export router
 module.exports = router;

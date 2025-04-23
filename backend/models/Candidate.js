@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 const candidateSchema = new mongoose.Schema({
   candidateId: { type: String, unique: true, sparse: true, required: true },
   fullName: { type: String, required: true },
@@ -10,6 +9,10 @@ const candidateSchema = new mongoose.Schema({
     ref: 'JobRequisition',
     required: true
   },
+  // ✅ Add these:
+  jobRequisitionCode: { type: String },   // e.g., WJR13-3
+  departmentCode: { type: String },       // e.g., WC-2
+
   progress: { type: String, default: 'Application' },
   progressDates: { type: Object, default: {} },
   documents: { type: [String], default: [] },
@@ -17,6 +20,6 @@ const candidateSchema = new mongoose.Schema({
   noted: { type: String, default: '' },
   _offerCounted: { type: Boolean, default: false },
   _onboardCounted: { type: Boolean, default: false }
-});
+})
 
 module.exports = mongoose.model('Candidate', candidateSchema);
