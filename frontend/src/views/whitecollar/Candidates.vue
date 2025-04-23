@@ -320,13 +320,11 @@ watch(globalSearch, () => {
 
 
 
-  // Fetch
   const fetchCandidates = async () => {
-  const res = await axios.get('/api/candidates')
-  candidates.value = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  filterCandidates()
-}
-
+    const res = await axios.get('/api/candidates?type=White%20Collar');
+    candidates.value = res.data;
+    filterCandidates();
+  };
 
   const fetchDepartments = async () => {
     const res = await axios.get('/api/departments?type=White Collar')

@@ -11,7 +11,11 @@ const jobRequisitionSchema = new mongoose.Schema({
   status: { type: String, enum: ['Vacant', 'Suspended', 'Filled', 'Cancel'], default: 'Vacant' },
   openingDate: { type: Date, required: true },
   startDate: { type: Date, required: false },
-  type: { type: String, default: 'White Collar' }
+  type: {
+    type: String,
+    enum: ['White Collar', 'Blue Collar'],
+    required: true
+  }
 }, { timestamps: true })
 
 module.exports = mongoose.model('JobRequisition', jobRequisitionSchema)

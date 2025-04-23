@@ -21,16 +21,15 @@
           <v-form @submit.prevent="handleSubmit">
             <v-row>
               <v-col cols="12" md="3">
-                <v-select v-model="subType" :items="['Sewer', 'Non-Sewer']" label="Sub-Type" required @update:modelValue="fetchDepartments" />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.departmentId" :items="departments" item-title="name" item-value="_id" label="Department" @update:modelValue="onDepartmentChange" required />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.jobTitle" :items="jobTitles" label="Job Title" @update:modelValue="assignBestRequisition" required />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select v-model="form.recruiter" :items="recruiters" label="Recruiter" required />
+                <v-select
+                  v-model="form.jobRequisitionId"
+                  :items="jobRequisitionOptions"
+                  item-title="displayName"
+                  item-value="_id"
+                  label="Job Requisition"
+                  @update:modelValue="updateRequisitionDetails"
+                  required
+                />
               </v-col>
               <v-col cols="12" md="3">
                 <v-text-field v-model="form.name" label="Full Name" required />
@@ -80,9 +79,13 @@
             <td>{{ c.recruiter }}</td>
             <td>{{ c.fullName }}</td>
             <td>{{ c.applicationSource }}</td>
-            <td v-for="stage in progressStages" :key="stage">
-              <v-btn class="stage-btn" :class="stageColor(stage)" @click="selectDate(c, stage)">
-                {{ formatDate(c.progressDates?.[stage]) || '-' }}
+            <td v-for="label in stageLabels" :key="label">
+              <v-btn
+                class="stage-btn"
+                :class="stageColor(stageMap[label])"
+                @click="selectDate(c, stageMap[label])"
+              >
+                {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
               </v-btn>
             </td>
             <td>{{ c.hireDecision }}</td>
@@ -143,9 +146,9 @@ const route = useRoute()
 const subType = ref(null)
 const form = ref({
   name: '',
-  recruiter: '',
-  departmentId: '',
   jobRequisitionId: '',
+  recruiter: '',
+  department: '',
   jobTitle: '',
   applicationSource: '',
   hireDecision: 'Candidate in Process',
@@ -153,6 +156,7 @@ const form = ref({
   progressDates: { Application: dayjs().tz('Asia/Phnom_Penh').format('YYYY-MM-DD') },
   documents: []
 })
+
 
 const departments = ref([])
 const jobTitles = ref([])
@@ -164,6 +168,8 @@ const filteredCandidates = ref([])
 const showForm = ref(false)
 const isEditMode = ref(false)
 const editingCandidateId = ref(null)
+const jobRequisitionOptions = ref([])
+
 
 const progressStages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
 const stageDialog = ref({ show: false, candidate: null, stage: '', date: '' })
@@ -173,6 +179,16 @@ const goTo = path => router.push(path)
 
 const goToCandidateDetail = (id) => {
   router.push(`/bluecollar/candidates/${id}`)
+}
+
+const stageLabels = ['Received Application', 'Sent to Manager', 'Interviews', 'Job Offer', 'Hired', 'Onboard']
+const stageMap = {
+  'Received Application': 'Application',
+  'Sent to Manager': 'ManagerReview',
+  'Interviews': 'Interview',
+  'Job Offer': 'JobOffer',
+  'Hired': 'Hired',
+  'Onboard': 'Onboard'
 }
 
 
@@ -187,57 +203,64 @@ const stageColor = stage => ({
 
 const formatDate = val => val ? dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD') : ''
 const formatDisplayDate = val => val ? dayjs(val).tz('Asia/Phnom_Penh').format('DD/MM/YYYY') : '-'
-
 const filterCandidates = () => {
-  const keyword = globalSearch.value.toLowerCase()
-  filteredCandidates.value = candidates.value.filter(c => {
+  const keyword = globalSearch.value?.toLowerCase() || ''
+  filteredCandidates.value = (candidates.value || []).filter(c => {
+    const progressDates = c.progressDates || {}
     const allValues = [
-      c.candidateId, c.fullName, c.recruiter, c.jobRequisitionId?.jobRequisitionId,
-      c.jobRequisitionId?.departmentId?.name, c.jobRequisitionId?.jobTitle,
-      c.applicationSource, c.hireDecision, ...(Object.values(c.progressDates || {}))
+      c.candidateId, c.fullName, c.recruiter,
+      c.jobRequisitionId?.jobRequisitionId,
+      c.jobRequisitionId?.departmentId?.name,
+      c.jobRequisitionId?.jobTitle,
+      c.applicationSource,
+      c.hireDecision,
+      ...Object.values(progressDates)
     ].join(' ').toLowerCase()
+
     return allValues.includes(keyword)
   })
 }
+
+
 watch(globalSearch, filterCandidates)
 
-const onDepartmentChange = () => {
-  const selected = departments.value.find(d => d._id === form.value.departmentId)
-  jobTitles.value = selected?.jobTitles || []
-}
 
-const assignBestRequisition = () => {
-  const matches = jobRequisitions.value
-    .filter(j => j.jobTitle === form.value.jobTitle && j.status === 'Vacant')
-    .sort((a, b) => (a.offerCount || 0) - (b.offerCount || 0))
 
-  if (matches.length > 0) {
-    form.value.jobRequisitionId = matches[0]._id
-  } else {
-    form.value.jobRequisitionId = ''
-    Swal.fire('❌ Full', 'All requisitions for this job title are full.', 'warning')
-  }
-}
-
-const selectDate = (candidate, stage) => {
+const selectDate = (c, label) => {
+  const backend = label // Already matches your backend stages
   stageDialog.value = {
     show: true,
-    candidate,
-    stage,
-    date: candidate.progressDates?.[stage] || dayjs().tz('Asia/Phnom_Penh').format('YYYY-MM-DD')
+    candidate: c,
+    stage: backend,
+    date: c.progressDates?.[backend] || dayjs().tz('Asia/Phnom_Penh').format('YYYY-MM-DD')
   }
 }
 
 const confirmStageDate = async () => {
   const { candidate, stage, date } = stageDialog.value
-  await axios.put(`/api/candidates/${candidate._id}/progress`, {
-    newStage: stage,
-    progressDate: date
-  })
   stageDialog.value.show = false
-  await fetchCandidates()
-  Swal.fire('✅ Updated', `${stage} date updated`, 'success')
+  try {
+    await axios.put(`/api/candidates/${candidate._id}/progress`, {
+      newStage: stage,
+      progressDate: date
+    })
+    const index = candidates.value.findIndex(c => c._id === candidate._id)
+    if (index !== -1) {
+      candidates.value[index].progressDates[stage] = date
+      if (progressStages.indexOf(stage) > progressStages.indexOf(candidates.value[index].progress)) {
+        candidates.value[index].progress = stage
+      }
+    }
+    Swal.fire('✅ Updated', `${stage} updated`, 'success')
+  } catch (err) {
+    if (err.response?.status === 409) {
+      Swal.fire('⚠️ Limit Reached', err.response.data.message, 'warning')
+    } else {
+      Swal.fire('❌ Error', 'Progress update failed', 'error')
+    }
+  }
 }
+
 
 const handleFileUpload = files => {
   form.value.documents = Array.isArray(files) ? files : [files]
@@ -331,12 +354,6 @@ const exportToExcel = () => {
   XLSX.writeFile(wb, 'bluecollar_candidates.xlsx')
 }
 
-const fetchDepartments = async () => {
-  if (!subType.value) return
-  const res = await axios.get(`/api/departments?type=Blue Collar&subType=${subType.value}`)
-  departments.value = res.data
-}
-
 const fetchRecruiters = async () => {
   const res = await axios.get('/api/departments/global-recruiters')
   recruiters.value = res.data.map(r => r.name)
@@ -344,34 +361,41 @@ const fetchRecruiters = async () => {
 
 const fetchJobRequisitions = async () => {
   const res = await axios.get('/api/job-requisitions')
-  jobRequisitions.value = res.data.filter(j => j.type === 'Blue Collar')
+  jobRequisitionOptions.value = res.data
+    .filter(j => j.type === 'Blue Collar' && j.status === 'Vacant')
+    .map(j => ({
+      ...j,
+      displayName: `${j.jobRequisitionId} - ${j.jobTitle}`
+    }))
 }
+
 
 const fetchCandidates = async () => {
-  const res = await axios.get('/api/candidates')
-  const all = res.data.filter(c => c.jobRequisitionId?.type === 'Blue Collar')
+  const res = await axios.get('/api/candidates?type=Blue%20Collar');
+  candidates.value = res.data;
+  filterCandidates();
+};
 
-  const jobId = route.query.jobRequisitionId
-  const stage = route.query.stage
 
-  if (jobId && stage) {
-    // Show only one candidate who matches the stage and requisition
-    candidates.value = all.filter(
-      c => c.jobRequisitionId?._id === jobId && c.progress === stage
-    ).slice(0, 1) // ← ⬅️ Only keep 1 candidate
-  } else {
-    candidates.value = all
-  }
 
-  filterCandidates()
+
+const updateRequisitionDetails = async (jobId) => {
+  const res = await axios.get(`/api/job-requisitions/${jobId}`)
+  const job = res.data
+  form.value.department = job.departmentId?.name || ''
+  form.value.jobTitle = job.jobTitle || ''
+  form.value.recruiter = job.recruiter || ''
 }
+
+
 
 
 onMounted(() => {
-  fetchCandidates()
-  fetchJobRequisitions()
-  fetchRecruiters()
-})
+  fetchCandidates();
+  fetchJobRequisitions();
+  fetchRecruiters();
+});
+
 </script>
 
 <style scoped>

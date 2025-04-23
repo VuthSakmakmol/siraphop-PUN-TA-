@@ -32,13 +32,24 @@ exports.createCandidate = async (req, res) => {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yy = String(now.getFullYear()).slice(-2);
 
+    let counterName, prefix;
+    if (job.type === 'White Collar') {
+      counterName = 'white_collar_candidate_counter';
+      prefix = 'W';
+    } else if (job.type === 'Blue Collar') {
+      counterName = 'blue_collar_candidate_counter';
+      prefix = job.departmentId?.subType === 'Sewer' ? 'BS' : 'BN';
+    } else {
+      return res.status(400).json({ message: '❌ Unknown job type.' });
+    }
+
     const counter = await Counter.findOneAndUpdate(
-      { name: 'white_collar_candidate_counter' },
+      { name: counterName },
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
 
-    const candidateId = `W${mm}${yy}${counter.value}`;
+    const candidateId = `${prefix}${mm}${yy}${counter.value}`;
 
     const newCandidate = new Candidate({
       candidateId,
@@ -64,18 +75,28 @@ exports.createCandidate = async (req, res) => {
   }
 };
 
-// ✅ Get all candidates
 exports.getCandidates = async (req, res) => {
   try {
+    const type = req.query.type;
+
     const candidates = await Candidate.find().populate({
       path: 'jobRequisitionId',
-      populate: { path: 'departmentId', model: 'Department' }
+      populate: [
+        { path: 'departmentId', model: 'Department' }
+      ]
     });
-    res.status(200).json(candidates);
+
+    const filtered = type
+      ? candidates.filter(c => c.jobRequisitionId?.type === type)
+      : candidates;
+
+    res.status(200).json(filtered);
   } catch (err) {
     res.status(500).json({ message: '❌ Failed to fetch candidates', error: err.message });
   }
 };
+
+
 
 // ✅ Get candidate by ID
 exports.getCandidateById = async (req, res) => {
