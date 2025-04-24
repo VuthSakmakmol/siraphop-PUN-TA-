@@ -54,8 +54,10 @@ const renderChart = () => {
             size: 14
           },
           formatter: (val, ctx) => {
-            const label = ctx.chart.data.labels[ctx.dataIndex]
-            return `${label}: ${val}`
+            const data = ctx.chart.data.datasets[0].data
+            const total = data.reduce((acc, cur) => acc + cur, 0)
+            const percentage = ((val / total) * 100).toFixed(1)
+            return `${percentage}%`
           }
         }
       }]

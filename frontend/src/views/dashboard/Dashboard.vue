@@ -97,7 +97,6 @@ import SourcePie from '@/components/dashboard/SourcePie.vue'
 import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
 import MonthlyApplicationLine from '@/components/dashboard/MonthlyApplicationLine.vue'
 import VacancyKPI from '@/components/dashboard/VacancyKPI.vue'
-import FillRateCircle from '@/components/dashboard/FillRateCircle.vue'
 
 // Filters
 const filters = ref({

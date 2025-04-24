@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <!-- Navigation Tabs -->
+    <!-- Navbar -->
     <div class="whitecollar-nav">
       <v-btn :class="currentRoute === 'dashboard' ? 'active-tab' : ''" @click="goTo('/bluecollar/dashboard')">Dashboard</v-btn>
       <v-btn :class="currentRoute === 'departments' ? 'active-tab' : ''" @click="goTo('/bluecollar/departments')">Department</v-btn>
@@ -9,15 +9,20 @@
     </div>
 
     <v-card class="pa-5" elevation="5">
+      <!-- Toggle Form -->
       <v-card-title>
-        <v-btn color="primary" @click="toggleForm">
+        <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
           {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
         </v-btn>
+        <v-spacer />
       </v-card-title>
+      
 
+      <!-- Create/Edit Form -->
       <v-expand-transition>
+        
         <div v-if="showForm">
-          <v-form @submit.prevent="handleSubmit" class="pa-4">
+          <v-form @submit.prevent="handleSubmit" class="mt-3 pa-4 rounded-lg elevation-1">
             <v-row dense>
               <!-- Sub-Type -->
               <v-col cols="12" md="4">
@@ -31,94 +36,64 @@
                   required
                 />
               </v-col>
-
-              <!-- Department -->
+              <!-- Department, Job Title, Recruiter -->
               <v-col cols="12" md="4">
                 <v-select
                   v-model="form.departmentId"
+                  label="Department"
                   :items="departments"
                   item-title="name"
                   item-value="_id"
-                  label="Department"
                   outlined dense
-                  :disabled="!subType || isEditing"
-                  @update:modelValue="onDepartmentChange"
                   required
+                  @update:model-value="onDepartmentChange"
+                  :disabled="!subType || isEditing"
                 />
               </v-col>
-
-              <!-- Job Title -->
               <v-col cols="12" md="4">
                 <v-select
                   v-model="form.jobTitle"
-                  :items="jobTitles"
                   label="Job Title"
-                  outlined dense
+                  :items="jobTitles"
                   :disabled="!jobTitles.length || isEditing"
-                  required
-                />
-              </v-col>
-
-              <!-- Recruiter -->
-              <v-col cols="12" md="4">
-                <v-select
-                  v-model="form.recruiter"
-                  :items="combinedRecruiters"
-                  label="Recruiter"
-                  outlined dense
-                  :disabled="!combinedRecruiters.length"
-                  required
-                />
-              </v-col>
-
-              <!-- Target, Status, Cost -->
-              <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="form.targetCandidates"
-                  label="Target"
-                  type="number"
                   outlined dense required
                 />
               </v-col>
-
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="form.recruiter"
+                  label="Recruiter"
+                  :items="combinedRecruiters"
+                  outlined dense required
+                />
+              </v-col>
+              <!-- Target, Status, Hiring Cost -->
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model.number="form.targetCandidates"
+                  type="number"
+                  label="Target Candidates"
+                  outlined dense required
+                />
+              </v-col>
               <v-col cols="12" md="3">
                 <v-select
                   v-model="form.status"
-                  :items="statusOptionsWithColor"
-                  item-title="title"
-                  item-value="value"
                   label="Status"
-                  outlined
-                  dense
-                >
-                  <template #item="{ props, item }">
-                    <v-list-item v-bind="props">
-                      <v-chip :color="statusColorMap[item.value]" size="small" variant="flat">
-                        {{ item.title }}
-                      </v-chip>
-                    </v-list-item>
-                  </template>
-
-                  <template #selection="{ item }">
-                    <v-chip :color="statusColorMap[item.value]" size="small" variant="flat">
-                      {{ item.title }}
-                    </v-chip>
-                  </template>
-                </v-select>
+                  :items="statusOptions"
+                  outlined dense required
+                />
               </v-col>
-
-
               <v-col cols="12" md="3">
                 <v-text-field
                   v-model.number="form.hiringCost"
-                  label="Cost ($)"
-                  prefix="$"
+                  label="Hiring Cost ($)"
                   type="number"
+                  prefix="$"
                   outlined dense
                 />
               </v-col>
-
-              <!-- Dates -->
+              <!-- Opening and Start Dates -->
               <v-col cols="12" md="3">
                 <v-menu v-model="openingDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
@@ -127,13 +102,16 @@
                       label="Opening Date"
                       readonly
                       v-bind="props"
+                      prepend-inner-icon="mdi-calendar"
                       outlined dense
                     />
                   </template>
-                  <v-date-picker @update:modelValue="val => { form.openingDate = formatDate(val); openingDateMenu = false }" />
+                  <v-date-picker @update:modelValue="val => {
+                    form.openingDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+                    openingDateMenu = false
+                  }" />
                 </v-menu>
               </v-col>
-
               <v-col cols="12" md="3">
                 <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
@@ -142,16 +120,19 @@
                       label="Start Date"
                       readonly
                       v-bind="props"
+                      prepend-inner-icon="mdi-calendar"
                       outlined dense
                     />
                   </template>
-                  <v-date-picker @update:modelValue="val => { form.startDate = formatDate(val); startDateMenu = false }" />
+                  <v-date-picker @update:modelValue="val => {
+                    form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+                    startDateMenu = false
+                  }" />
                 </v-menu>
               </v-col>
-
-              <!-- Submit -->
+              <!-- Submit Button -->
               <v-col cols="12" md="3">
-                <v-btn color="success" type="submit" class="mt-2">
+                <v-btn color="success" type="submit" class="mt-2" rounded>
                   {{ isEditing ? 'Update' : 'Create' }}
                 </v-btn>
               </v-col>
@@ -159,52 +140,62 @@
           </v-form>
         </div>
       </v-expand-transition>
-
-      <!-- Table -->
+      <!-- Job Requisition Table -->
       <v-divider class="my-4" />
-      <v-table>
-        <thead>
-          <tr>
-            <th>Job ID</th>
-            <th>Department</th>
-            <th>Job Title</th>
-            <th>Status</th>
-            <th>Opening</th>
-            <th>Start</th>
-            <th>Recruiter</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="job in jobRequisitions" :key="job._id">
-            <td>{{ job.jobRequisitionId }}</td>
-            <td>{{ job.departmentId?.name }}</td>
-            <td>{{ job.jobTitle }}</td>
-            <td>
-              <v-chip
-                :color="statusColorMap[job.status]"
-                class="cursor-pointer"
-                size="small"
-                variant="flat"
-                @click="goToFilteredCandidates(job, job.status)"
-              >
-                {{ job.status }}
-              </v-chip>
-            </td>
-            <td>{{ formatDisplayDate(job.openingDate) }}</td>
-            <td>{{ formatDisplayDate(job.startDate) }}</td>
-            <td>{{ job.recruiter }}</td>
-            <td>
-              <v-btn icon size="small" color="blue" @click="editRequisition(job)">
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-              <v-btn icon size="small" color="red" @click="deleteRequisition(job._id)">
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+<div class="job-table-wrapper">
+  <table class="job-sticky-table">
+    <thead>
+      <tr>
+        <th>Job ID</th>
+        <th>Department</th>
+        <th>Job Title</th>
+        <th>Opening Date</th>
+        <th>Recruiter</th>
+        <th>Status</th>
+        <th>New Hire Start Date</th>
+        <th>Hiring Cost</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="job in jobRequisitions" :key="job._id">
+        <td>{{ job.jobRequisitionId }}</td>
+        <td>{{ job.departmentId?.name }}</td>
+        <td>{{ job.jobTitle }}</td>
+        <td>{{ formatDisplayDate(job.openingDate) }}</td>
+        <td>{{ job.recruiter }}</td>
+        <td>
+          <v-chip
+            size="small"
+            class="cursor-pointer"
+            :class="{
+              'status-vacant': job.status === 'Vacant',
+              'status-filled': job.status === 'Filled',
+              'status-cancel': job.status === 'Cancel',
+              'status-suspended-green': job.status === 'Suspended' && job.offerCount > 0,
+              'status-suspended-gray': job.status === 'Suspended' && job.offerCount === 0
+            }"
+            @click="goToFilteredCandidates(job, job.status)"
+          >
+            {{ job.status }}
+          </v-chip>
+        </td>
+        <td>{{ formatDisplayDate(job.startDate) }}</td>
+        <td>{{ job.hiringCost?.toFixed(2) }}$</td>
+        <td>
+          <v-btn icon size="x-small" color="blue" @click="editRequisition(job)">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn icon size="x-small" color="red" @click="deleteRequisition(job._id)">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
     </v-card>
   </v-container>
 </template>
@@ -236,6 +227,8 @@ const jobRequisitions = ref([])
 const showForm = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+const highlightedCandidateId = ref(route.query.candidateId || null)
+
 
 const form = ref({
   departmentId: '',
@@ -265,20 +258,18 @@ const statusOptions = [
   { title: 'Cancel', value: 'Cancel' }
 ]
 
-// ✅ Filter only statuses without colors
 const statusOptionsWithColor = computed(() =>
   statusOptions.filter(s => statusColorMap[s.value])
 )
 
-
 const fetchGlobalRecruiters = async () => {
-  const res = await axios.get('http://localhost:5000/api/departments/global-recruiters')
+  const res = await axios.get('/api/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
 }
 
 const fetchDepartments = async () => {
   if (!subType.value) return
-  const res = await axios.get(`http://localhost:5000/api/departments?type=Blue Collar&subType=${subType.value}`)
+  const res = await axios.get(`/api/departments?type=Blue Collar&subType=${subType.value}`)
   departments.value = res.data
 }
 
@@ -289,18 +280,55 @@ const onDepartmentChange = () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await axios.get('http://localhost:5000/api/job-requisitions')
-  jobRequisitions.value = res.data.filter(j => j.type === 'Blue Collar')
+  const res = await axios.get('/api/job-requisitions')
+  jobRequisitions.value = res.data
+    .filter(j => j.type === 'Blue Collar')
+    .map(j => ({
+      ...j,
+      departmentName: j.departmentId?.name || '—',
+      offerCount: Number(j.offerCount) || 0,
+      onboardCount: Number(j.onboardCount) || 0
+    }))
 }
+
+const goToFilteredCandidates = (job, status) => {
+  const base = {
+    path: '/bluecollar/candidates',
+    query: { jobRequisitionId: job._id }
+  }
+
+  if (status === 'Vacant') {
+    // Show those in Application, ManagerReview, Interview
+    base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
+  }
+  else if (status === 'Suspended') {
+    if (job.offerCount > 0) {
+      // Yellow suspended — offer/hired
+      base.query.stages = ['JobOffer', 'Hired'].join(',')
+    } else {
+      // Gray suspended — stuck anywhere
+      base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
+    }
+  }
+  else if (status === 'Filled') {
+    base.query.stages = ['Onboard']
+  }
+  else if (status === 'Cancel') {
+    base.query.stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'].join(',')
+  }
+
+  router.push(base)
+}
+
 
 const handleSubmit = async () => {
   const payload = { ...form.value, type: 'Blue Collar' }
   try {
     if (isEditing.value) {
-      await axios.put(`http://localhost:5000/api/job-requisitions/${editingId.value}`, payload)
+      await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
       Swal.fire('✅ Updated', 'Job requisition updated', 'success')
     } else {
-      await axios.post('http://localhost:5000/api/job-requisitions', payload)
+      await axios.post('/api/job-requisitions', payload)
       Swal.fire('✅ Created', 'Job requisition created', 'success')
     }
     fetchRequisitions()
@@ -335,7 +363,7 @@ const editRequisition = (job) => {
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes' })
   if (confirm.isConfirmed) {
-    await axios.delete(`http://localhost:5000/api/job-requisitions/${id}`)
+    await axios.delete(`/api/job-requisitions/${id}`)
     Swal.fire('Deleted', 'Requisition removed', 'success')
     fetchRequisitions()
   }
@@ -358,23 +386,6 @@ const resetForm = () => {
   recruiters.value = []
 }
 
-const goToFilteredCandidates = (job, status) => {
-  const stageMap = {
-    Filled: 'Onboard',
-    Suspended: 'JobOffer'
-  }
-
-  const stage = stageMap[status]
-  if (!stage) {
-    return Swal.fire('⚠️ No candidate to show for this status', '', 'info')
-  }
-
-  // 💡 Redirect with job ID + stage, frontend will filter
-  const url = `/bluecollar/candidates?jobRequisitionId=${job._id}&stage=${stage}`
-  router.push(url)
-}
-
-
 const toggleForm = () => showForm.value = !showForm.value
 const formatDate = val => dayjs(val).format('YYYY-MM-DD')
 const formatDisplayDate = val => val ? new Date(val).toLocaleDateString() : ''
@@ -393,8 +404,6 @@ onMounted(() => {
 .v-btn {
   text-transform: none;
 }
-
-/* mini navbar */
 .whitecollar-nav {
   display: flex;
   gap: 12px;
@@ -419,5 +428,99 @@ onMounted(() => {
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
+.status-vacant {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+.status-filled {
+  background-color: #c2e1b4;
+  color: #2fc837;
+}
+.status-cancel {
+  background-color: #ffcdd2;
+  color: #b71c1c;
+}
+.status-suspended-green {
+  background-color: #939671;
+  color: #e6fa06;
+}
+.status-suspended-gray {
+  background-color: #eceae0;
+  color: #534b4b;
+}
+
+.v-chip {
+  border-radius: 9px !important; /* Fully rounded pill */
+}
+
+
+
+/* table */
+
+.v-table thead th {
+  font-weight: bold;
+  background-color: #f5f5f5;
+}
+
+.v-table tbody td {
+  font-weight: normal;
+}
+
+
+.job-table-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #eee;
+
+  /* ✅ Smooth scroll */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS support */
+}
+
+.job-sticky-table {
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+  table-layout: auto;
+
+  /* ✅ Smooth scroll */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS support */
+}
+
+.job-sticky-table th {
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  font-weight: 600;
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  z-index: 10;
+}
+
+.job-sticky-table td {
+  padding: 10px 16px;
+  font-weight: 400;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.action-icon {
+  padding: 4px;
+  margin: 0 2px;
+  min-width: 28px;
+  height: 28px;
+}
+
+.red-icon {
+  color: red;
+}
+
+
 
 </style>

@@ -116,7 +116,8 @@ exports.updateJobRequisition = async (req, res) => {
       targetCandidates,
       hiringCost,
       status,
-      openingDate
+      openingDate,
+      startDate
     } = req.body;
 
     const existing = await JobRequisition.findById(id);
@@ -128,6 +129,8 @@ exports.updateJobRequisition = async (req, res) => {
     existing.hiringCost = hiringCost;
     existing.status = status;
     existing.openingDate = moment.tz(openingDate, 'Asia/Phnom_Penh');
+    existing.startDate = moment.tz(startDate, 'Asia/Phnom_Penh'); // 🔥 Add this
+
 
     await existing.save();
 
@@ -197,4 +200,23 @@ exports.updateRequisitionCounts = async (jobRequisitionId) => {
   });
 };
 
+// ✅ Get the one candidate in JobOffer stage for this requisition (used for green Suspended)
+exports.getOfferStageCandidate = async (req, res) => {
+  try {
+    const candidate = await Candidate.findOne({
+      jobRequisitionId: req.params.id,
+      progress: 'JobOffer',
+      hireDecision: { $in: ['Candidate in Process', null] }
+    });
+
+    if (!candidate) {
+      return res.status(404).json({ message: 'No candidate found in Job Offer stage' });
+    }
+
+    res.json({ candidate });
+  } catch (err) {
+    console.error('❌ Error fetching offer candidate:', err.message);
+    res.status(500).json({ message: 'Failed to fetch candidate in offer stage' });
+  }
+};
 

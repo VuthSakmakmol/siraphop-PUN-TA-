@@ -161,8 +161,6 @@ exports.updateCandidate = async (req, res) => {
   }
 };
 
-
-
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
 
@@ -184,12 +182,12 @@ exports.updateCandidateProgress = async (req, res) => {
 
     if (newIndex === -1) return res.status(400).json({ message: '❌ Invalid stage name' });
 
-    // Prevent updates if candidate is marked as refused
+    // 🔒 Block if candidate was refused
     if (['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision) && newIndex > currentIndex) {
       return res.status(400).json({ message: `🚫 Progress is locked due to: ${candidate.hireDecision}` });
     }
 
-    // ✅ Lock enforcement: if someone has already placed JobOffer
+    // 🔒 Enforce JobOffer locking if someone already reached it
     const existingOfferCandidate = await Candidate.findOne({
       jobRequisitionId: candidate.jobRequisitionId,
       _id: { $ne: candidate._id },
@@ -198,51 +196,72 @@ exports.updateCandidateProgress = async (req, res) => {
     });
 
     const tryingToMoveForward = newIndex > currentIndex;
-    const isBeyondAllowed = !['JobOffer', 'Hired', 'Onboard'].includes(candidate.progress);
+    const isNotYetAtJobOffer = !['JobOffer', 'Hired', 'Onboard'].includes(candidate.progress);
 
-    if (existingOfferCandidate && tryingToMoveForward && isBeyondAllowed) {
+    if (existingOfferCandidate && tryingToMoveForward && isNotYetAtJobOffer) {
       return res.status(400).json({
         message: '🔒 Progress is locked. Another candidate has already reached Job Offer. Please assign a different Job ID to continue.'
       });
     }
 
-    // ✅ Save progress date
-    candidate.progressDates = {
-      ...candidate.progressDates,
-      [newStage]: new Date(progressDate)
-    };
+    // ✅ Fill missing progressDates (auto-fill earlier stages)
+    const updatedProgressDates = { ...candidate.progressDates };
+    for (let i = 0; i <= newIndex; i++) {
+      const stageKey = stageOrder[i];
+      if (!updatedProgressDates[stageKey]) {
+        updatedProgressDates[stageKey] = new Date(progressDate);
+      }
+    }
+    candidate.progressDates = updatedProgressDates;
 
+    // ✅ Update progress field only if going forward
     if (newIndex > currentIndex) {
       candidate.progress = newStage;
     }
 
-    // ✅ Handle JobOffer
-    if (newStage === 'JobOffer' && !candidate._offerCounted && candidate.hireDecision === 'Candidate in Process') {
+    // ✅ Handle JobOffer logic
+    if (
+      newStage === 'JobOffer' &&
+      !candidate._offerCounted &&
+      candidate.hireDecision === 'Candidate in Process'
+    ) {
       job.offerCount = (job.offerCount || 0) + 1;
       candidate._offerCounted = true;
-      if (job.offerCount >= job.targetCandidates) job.status = 'Suspended';
+
+      if (job.offerCount >= job.targetCandidates) {
+        job.status = 'Suspended';
+      }
     }
 
-    // ✅ Handle Onboard
+    // ✅ Handle Onboard logic
     if (newStage === 'Onboard' && !candidate._onboardCounted) {
       job.onboardCount = (job.onboardCount || 0) + 1;
+
+      // Decrease offerCount if previously counted
       if (candidate._offerCounted) {
         job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
       }
+
       candidate._onboardCounted = true;
       candidate.hireDecision = 'Hired';
-      if (job.onboardCount >= job.targetCandidates) job.status = 'Filled';
+
+      if (job.onboardCount >= job.targetCandidates) {
+        job.status = 'Filled';
+      }
     }
 
     await candidate.save();
     await job.save();
 
-    res.status(200).json({ message: `✅ Candidate moved to ${newStage}`, candidate });
+    return res.status(200).json({ message: `✅ Candidate moved to ${newStage}`, candidate });
+
   } catch (err) {
     console.error('❌ Progress update error:', err);
-    res.status(500).json({ message: '❌ Server error', error: err.message });
+    return res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
+
 
 
 // ✅ Upload Documents

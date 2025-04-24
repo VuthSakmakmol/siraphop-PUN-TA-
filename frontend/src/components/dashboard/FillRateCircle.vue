@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
     <div class="text-center">
       <v-progress-circular
         :model-value="value"
@@ -9,11 +9,14 @@
       >
         <div class="text-h6 font-weight-bold">{{ value }}%</div>
       </v-progress-circular>
-      <div class="mt-2 text-subtitle-2">Fill Rate</div>
+      <div class="mt-2 text-subtitle-2">Fill Ratedd</div>
     </div>
   </template>
   
   <script setup>
   const props = defineProps({ value: Number })
   </script>
-  
+   -->
+  <template>
+    
+  </template>

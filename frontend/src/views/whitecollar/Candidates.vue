@@ -74,69 +74,79 @@
         </v-row>
 
 
-        <v-table class="mt-3">
-        <thead>
-          <tr>
-            <th>Candidate ID</th>
-            <th>Job ID</th>
-            <th>Department</th>
-            <th>Job Title</th>
-            <th>Recruiter</th>
-            <th>Name</th>
-            <th>Source</th>
-            <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
-            <th>Final Decision</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="c in filteredCandidates" :key="c._id">
-            <td>{{ c.candidateId }}</td>
-            <td>{{ c.jobRequisitionCode || '-' }}</td>
-            <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
-            <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
-            <td>{{ c.recruiter }}</td>
-            <td>{{ c.fullName }}</td>
-            <td>{{ c.applicationSource }}</td>
-            <td v-for="label in stageLabels" :key="label">
-              <v-tooltip v-if="jobIsLocked(c)" location="top">
-                <template #activator="{ props }">
+        <!-- Candidate Table -->
+        <div class="table-wrapper">
+          <table class="native-table sticky-table">
+            <thead>
+              <tr>
+                <th>Candidate ID</th>
+                <th>Job ID</th>
+                <th>Department</th>
+                <th>Job Title</th>
+                <th>Recruiter</th>
+                <th>Name</th>
+                <th>Source</th>
+                <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
+                <th>Final Decision</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in filteredCandidates" :key="c._id">
+                <td>{{ c.candidateId }}</td>
+                <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
+                <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
+                <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
+                <td>{{ c.recruiter }}</td>
+                <td>{{ c.fullName }}</td>
+                <td>{{ c.applicationSource }}</td>
+                <td v-for="label in stageLabels" :key="label">
+                  <v-tooltip v-if="jobIsLocked(c)" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        class="stage-btn"
+                        :disabled="true"
+                        :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
+                      >
+                        {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                      </v-btn>
+                    </template>
+                    <span>This job offer is full. Please change Job ID to continue.</span>
+                  </v-tooltip>
                   <v-btn
-                    v-bind="props"
+                    v-else
                     class="stage-btn"
-                    :disabled="true"
                     :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
+                    @click="selectDate(c, label)"
                   >
                     {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
                   </v-btn>
-                </template>
-                <span>This job offer is full. Please change Job ID to continue.</span>
-              </v-tooltip>
-              <v-btn
-                v-else
-                class="stage-btn"
-                :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
-                @click="selectDate(c, label)"
-              >
-                {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
-              </v-btn>
-            </td>
-            <td>{{ c.hireDecision }}</td>
-            <td>
-              <v-menu>
-                <template #activator="{ props }">
-                  <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
-                </template>
-                <v-list>
-                  <v-list-item @click="editCandidate(c)"><v-list-item-title>Edit</v-list-item-title></v-list-item>
-                  <v-list-item @click="goToCandidateDetail(c._id)"><v-list-item-title>Detail</v-list-item-title></v-list-item>
-                  <v-list-item @click="deleteCandidate(c._id)"><v-list-item-title>Delete</v-list-item-title></v-list-item>
-                </v-list>
-              </v-menu>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+                </td>
+                <td>{{ c.hireDecision }}</td>
+                <td>
+                  <v-menu>
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
+                    </template>
+                    <v-list>
+                      <v-list-item @click="editCandidate(c)">
+                        <v-list-item-title>Edit</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item @click="goToCandidateDetail(c._id)">
+                        <v-list-item-title>Detail</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item @click="deleteCandidate(c._id)">
+                        <v-list-item-title>Delete</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
 
         <!-- Stage Dialog -->
         <v-dialog v-model="stageDialog.show" max-width="400">
@@ -182,6 +192,16 @@ const recruiters = ref([])
 const globalSearch = ref('')
 
 const currentDate = ref(dayjs().tz(tz).format('YYYY-MM-DD'))
+
+const stageCounts = ref({
+  Application: 0,
+  ManagerReview: 0,
+  Interview: 0,
+  JobOffer: 0,
+  Hired: 0,
+  Onboard: 0
+})
+
 
 setInterval(() => {
   const now = dayjs().tz(tz).format('YYYY-MM-DD')
@@ -323,6 +343,25 @@ const fetchCandidates = async () => {
   const res = await axios.get('/api/candidates?type=White%20Collar')
   candidates.value = res.data
   filterCandidates()
+  
+  const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
+const counts = {
+  Application: 0,
+  ManagerReview: 0,
+  Interview: 0,
+  JobOffer: 0,
+  Hired: 0,
+  Onboard: 0
+}
+
+for (const candidate of res.data) {
+  if (stages.includes(candidate.progress)) {
+    counts[candidate.progress] += 1
+  }
+}
+stageCounts.value = counts
+
+
 }
 
 const fetchDepartments = async () => {
@@ -352,11 +391,12 @@ const updateRequisitionDetails = async (jobId) => {
 }
 
 const fetchJobRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
+  const res = await axios.get('/api/job-requisitions');
   jobRequisitionOptions.value = res.data
-    .filter(j => j.status === 'Vacant')
-    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
-}
+    .filter(j => j.status === 'Vacant' && j.type === 'White Collar') // ✅ Only include White Collar
+    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }));
+};
+
 
 const resetForm = () => {
   form.value = {
@@ -481,5 +521,60 @@ onMounted(() => {
     font-weight: 600;
     transition: background-color 0.3s ease;
   }
+
+  .table-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-top: 16px;
+
+  /* ✅ Smooth scroll */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS support */
+}
+
+.native-table {
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+
+  /* ✅ Smooth scroll */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS support */
+}
+
+.native-table th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+  font-weight: 600;
+  padding: 8px 16px;
+  white-space: nowrap;
+  border-bottom: 1px solid #ccc;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.native-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 8px 16px;
+  font-weight: 400;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.stage-btn {
+  font-size: 11px;
+  padding: 0 8px;
+  min-width: 85px;
+  height: 30px;
+}
+
 
   </style>

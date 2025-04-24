@@ -6,7 +6,8 @@ const {
   getJobRequisitionById,
   updateJobRequisition,
   deleteJobRequisition,
-  getJobTitlesAndRecruiters
+  getJobTitlesAndRecruiters,
+  getOfferStageCandidate
 } = require('../controllers/jobRequisitionController');
 
 // 🔹 Get job titles & recruiters for a department
@@ -27,6 +28,7 @@ router.put('/:id', updateJobRequisition);
 // 🔹 Delete job requisition
 router.delete('/:id', deleteJobRequisition);
 
-
+// 🔹 Get the one candidate in JobOffer stage for this requisition
+router.get('/requisition/:id/offer-candidate', getOfferStageCandidate);
 
 module.exports = router;

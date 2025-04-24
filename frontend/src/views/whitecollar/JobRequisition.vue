@@ -95,7 +95,6 @@
                       v-bind="props"
                       prepend-inner-icon="mdi-calendar"
                       outlined dense
-                      :disabled="isEditing"
                     />
                   </template>
                   <v-date-picker @update:modelValue="val => {
@@ -152,8 +151,8 @@
       </v-row>
 
       <!-- Requisition Table -->
-      <div style="overflow-x: auto;">
-        <v-table class="mt-2">
+      <div class="table-wrapper">
+        <table class="native-table sticky-table">
           <thead>
             <tr>
               <th>Job ID</th>
@@ -162,8 +161,8 @@
               <th>Opening Date</th>
               <th>Recruiter</th>
               <th>Status</th>
-              <th>Hiring Cost</th>
               <th>New Hire Start Date</th>
+              <th>Hiring Cost</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -177,33 +176,34 @@
               <td>
                 <v-btn variant="text" class="px-0" style="text-transform:none" @click="viewStageCandidates(item)">
                   <span :class="[
-                      'status-badge',
-                      {
-                        'status-vacant': item.status === 'Vacant',
-                        'status-filled': item.status === 'Filled',
-                        'status-cancel': item.status === 'Cancel',
-                        'status-suspended-green': item.status === 'Suspended' && Number(item.offerCount) > 0,
-                        'status-suspended-gray': item.status === 'Suspended' && Number(item.offerCount) === 0
-                      }
-                    ]">
+                    'status-badge',
+                    {
+                      'status-vacant': item.status === 'Vacant',
+                      'status-filled': item.status === 'Filled',
+                      'status-cancel': item.status === 'Cancel',
+                      'status-suspended-green': item.status === 'Suspended' && Number(item.offerCount) > 0,
+                      'status-suspended-gray': item.status === 'Suspended' && Number(item.offerCount) === 0
+                    }
+                  ]">
                     {{ item.status }}
                   </span>
                 </v-btn>
               </td>
-              <td>{{ item.hiringCost?.toFixed(2) }}$</td>
               <td>{{ formatDate(item.startDate) }}</td>
+              <td>{{ item.hiringCost?.toFixed(2) }}$</td>
               <td>
-                <v-btn icon size="small" color="blue" @click="editRequisition(item)">
+                <v-btn icon size="x-small" color="blue" @click="editRequisition(item)">
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
-                <v-btn icon size="small" color="red" @click="deleteRequisition(item._id)">
+                <v-btn icon size="x-small" color="red" @click="deleteRequisition(item._id)">
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
               </td>
             </tr>
           </tbody>
-        </v-table>
+        </table>
       </div>
+
     </v-card>
   </v-container>
 </template>
@@ -308,12 +308,36 @@ const fetchRequisitions = async () => {
   }))
 }
 
+
 const viewStageCandidates = (item) => {
-  const stage = item.status === 'Filled' ? 'Onboard' : item.status === 'Suspended' ? 'JobOffer' : null
-  if (stage) {
-    router.push({ path: '/whitecollar/candidates', query: { jobRequisitionId: item._id, stage } })
+  const base = {
+    path: '/whitecollar/candidates',
+    query: { jobRequisitionId: item._id }
   }
+
+  // Set stage filters depending on status
+  switch (item.status) {
+    case 'Vacant':
+      base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
+      break
+    case 'Suspended':
+      base.query.stages = item.offerCount > 0
+        ? ['JobOffer', 'Hired'].join(',')
+        : ['Application', 'ManagerReview', 'Interview'].join(',')
+      break
+    case 'Filled':
+      base.query.stages = ['Onboard']
+      break
+    case 'Cancel':
+      base.query.stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'].join(',')
+      break
+    default:
+      base.query.stages = ''
+  }
+
+  router.push(base)
 }
+
 
 const exportToExcel = () => {
   if (exportInProgress.value) return
@@ -520,5 +544,50 @@ onMounted(() => {
   background-color: #fff8e1;
   color: #f9a825;
 }
+
+.table-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.native-table {
+  width: max-content;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.native-table th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+  font-weight: 600;
+  padding: 8px 16px;
+  white-space: nowrap;
+  border-bottom: 1px solid #ccc;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.native-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 8px 16px;
+  font-weight: 400;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+.v-btn[icon] {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+}
+
 </style>
 

@@ -67,7 +67,10 @@ const renderChart = () => {
           color: '#fff',
           font: { weight: 'bold', size: 14 },
           formatter: (val, ctx) => {
-            return val > 0 ? `${ctx.chart.data.labels[ctx.dataIndex]}: ${val}` : ''
+            const data = ctx.chart.data.datasets[0].data
+            const total = data.reduce((sum, val) => sum + val, 0)
+            const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0
+            return `${percent}%`
           }
         }
       }
