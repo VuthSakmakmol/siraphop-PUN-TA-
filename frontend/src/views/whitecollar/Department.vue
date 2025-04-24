@@ -117,36 +117,31 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter,useRoute } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
-import { computed } from 'vue'
 
 const router = useRouter()
-const departments = ref([])
-const loading = ref(false)
-const globalRecruiter = ref('')
-const showRecruiterSection = ref(false)
-const globalRecruiters = ref([])
 const route = useRoute()
-
-
 const currentRoute = computed(() => route.path.split('/')[2])
 
-const goTo = (path) => {
-  if (route.path !== path) {
-    router.push(path)
-  }
-}
+const departments = ref([])
+const globalRecruiters = ref([])
+const globalRecruiter = ref('')
+const showRecruiterSection = ref(false)
+const loading = ref(false)
 
 const form = ref({
   departmentId: '',
   name: '',
   type: 'White Collar'
 })
+
+const goTo = (path) => {
+  if (route.path !== path) router.push(path)
+}
 
 const resetForm = () => {
   form.value = {
@@ -156,21 +151,25 @@ const resetForm = () => {
   }
 }
 
+const fireAlert = (type, title, text) => {
+  Swal.fire({ icon: type, title, text, allowEnterKey: true })
+}
+
 const fetchDepartments = async () => {
   try {
     const res = await axios.get('http://localhost:5000/api/departments?type=White Collar')
     departments.value = res.data
-  } catch {
-    Swal.fire('Error', 'Failed to fetch departments', 'error')
+  } catch (err) {
+    fireAlert('error', 'Fetch Failed', err?.response?.data?.message || 'Failed to fetch departments')
   }
 }
- 
+
 const fetchGlobalRecruiters = async () => {
   try {
     const res = await axios.get('http://localhost:5000/api/departments/global-recruiters')
     globalRecruiters.value = res.data
-  } catch {
-    console.error('Failed to load global recruiters')
+  } catch (err) {
+    fireAlert('error', 'Load Error', 'Failed to load global recruiters')
   }
 }
 
@@ -179,48 +178,62 @@ const toggleRecruiterSection = () => {
 }
 
 const handleSubmit = async () => {
-  if (!form.value.name.trim() || !form.value.departmentId.trim()) return
+  if (!form.value.name.trim() || !form.value.departmentId.trim()) {
+    fireAlert('warning', 'Required Fields Missing', 'Please fill in both Department ID and Name.')
+    return
+  }
+
+  const duplicate = departments.value.find(d => d.departmentId == form.value.departmentId && d._id !== form.value._id)
+  if (!form.value._id && duplicate) {
+    fireAlert('warning', 'Duplicate ID', 'A department with this ID already exists.')
+    return
+  }
+
   loading.value = true
   try {
     if (form.value._id) {
       await axios.put(`http://localhost:5000/api/departments/${form.value._id}`, form.value)
-      Swal.fire('✅ Updated', 'Department updated successfully', 'success')
+      fireAlert('success', '✅ Updated', 'Department updated successfully')
     } else {
       await axios.post('http://localhost:5000/api/departments', form.value)
-      Swal.fire('✅ Created', 'Department created successfully', 'success')
+      fireAlert('success', '✅ Created', 'Department created successfully')
     }
     resetForm()
     fetchDepartments()
   } catch (err) {
-    const msg = err?.response?.data?.message
-    Swal.fire('Error', msg || 'Failed to save department', 'error')
+    fireAlert('error', 'Error', err?.response?.data?.message || 'Failed to save department')
   } finally {
     loading.value = false
   }
 }
 
 const addRecruiter = async () => {
-  if (!globalRecruiter.value.trim()) return
+  if (!globalRecruiter.value.trim()) {
+    fireAlert('warning', 'Recruiter Required', 'Please enter a recruiter name before adding.')
+    return
+  }
+
   try {
     await axios.post('http://localhost:5000/api/departments/global-recruiter', {
       recruiter: globalRecruiter.value.trim()
     })
-    Swal.fire('✅ Success', 'Recruiter added globally', 'success')
+    fireAlert('success', '✅ Success', 'Recruiter added globally')
     globalRecruiter.value = ''
     await fetchGlobalRecruiters()
   } catch (err) {
-    Swal.fire('❌ Error', err?.response?.data?.message || 'Failed to add recruiter', 'error')
+    fireAlert('error', '❌ Error', err?.response?.data?.message || 'Failed to add recruiter')
   }
 }
 
 const showEditDeleteOptions = async (recruiter) => {
   const { value: action } = await Swal.fire({
-    title: `Manage "${recruiter.name}"`,
+    title: `Manage Recruiter: "${recruiter.name}"`,
     showDenyButton: true,
-    confirmButtonText: 'Edit',
-    denyButtonText: 'Delete',
+    confirmButtonText: '✏️ Edit',
+    denyButtonText: '🗑️ Delete',
     showCancelButton: true,
-    icon: 'info'
+    icon: 'question',
+    allowEnterKey: true
   })
 
   if (action === true) {
@@ -231,19 +244,21 @@ const showEditDeleteOptions = async (recruiter) => {
       inputValue: recruiter.name,
       showCancelButton: true,
       confirmButtonText: 'Update',
+      allowEnterKey: true,
       inputValidator: (value) => {
         if (!value.trim()) return 'Name cannot be empty'
       }
     })
+
     if (newName && newName.trim()) {
       try {
         await axios.put(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`, {
           name: newName.trim()
         })
-        Swal.fire('✅ Updated', 'Recruiter updated successfully', 'success')
+        fireAlert('success', '✅ Updated', 'Recruiter updated successfully')
         await fetchGlobalRecruiters()
       } catch (err) {
-        Swal.fire('❌ Error', err?.response?.data?.message || 'Update failed', 'error')
+        fireAlert('error', '❌ Error', err?.response?.data?.message || 'Update failed')
       }
     }
   } else if (action === false) {
@@ -252,22 +267,20 @@ const showEditDeleteOptions = async (recruiter) => {
       text: `Delete recruiter "${recruiter.name}" from all departments?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete'
+      confirmButtonText: 'Yes, delete',
+      allowEnterKey: true
     })
+
     if (confirm.isConfirmed) {
       try {
         await axios.delete(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`)
-        Swal.fire('✅ Deleted', 'Recruiter removed', 'success')
+        fireAlert('success', '✅ Deleted', 'Recruiter removed')
         await fetchGlobalRecruiters()
       } catch (err) {
-        Swal.fire('❌ Error', err?.response?.data?.message || 'Failed to delete recruiter', 'error')
+        fireAlert('error', '❌ Error', err?.response?.data?.message || 'Failed to delete recruiter')
       }
     }
   }
-}
-
-const edit = (dept) => {
-  form.value = { ...dept }
 }
 
 const confirmDelete = (dept) => {
@@ -276,12 +289,13 @@ const confirmDelete = (dept) => {
     text: 'This will permanently delete the department.',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes, delete it!'
+    confirmButtonText: 'Yes, delete it!',
+    allowEnterKey: true
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
         await axios.delete(`http://localhost:5000/api/departments/${dept._id}`)
-        Swal.fire('🗑️ Deleted', 'Department has been removed.', 'success')
+        fireAlert('success', '🗑️ Deleted', 'Department has been removed.')
         fetchDepartments()
       } catch (err) {
         const msg = err?.response?.data?.message || 'Failed to delete department'
@@ -289,15 +303,20 @@ const confirmDelete = (dept) => {
         if (link) {
           Swal.fire({
             icon: 'warning',
-            title: 'Cannot Delete',
-            html: `<p>${msg}</p><a href="${link}" target="_blank" style="color:#1e88e5;">👉 Go to Job Requisitions</a>`
+            title: '⚠️ Deletion Blocked',
+            html: `<p>${msg}</p><p><a href="${link}" target="_blank" style="color:#1e88e5;font-weight:bold;">👉 View Related Job Requisitions</a></p>`,
+            allowEnterKey: true
           })
         } else {
-          Swal.fire('Error', msg, 'error')
+          fireAlert('error', 'Error', msg)
         }
       }
     }
   })
+}
+
+const edit = (dept) => {
+  form.value = { ...dept }
 }
 
 const goToDetail = (dept) => {
@@ -309,6 +328,7 @@ onMounted(() => {
   fetchGlobalRecruiters()
 })
 </script>
+
 
 <style scoped>
 .v-table {

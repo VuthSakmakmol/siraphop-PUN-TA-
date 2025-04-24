@@ -11,12 +11,36 @@
     <v-card class="pa-5" elevation="5">
       <!-- Toggle Form -->
       <v-card-title>
-        <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
-          {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
-        </v-btn>
-        <v-spacer />
+        <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
+          <!-- Create Button -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-btn color="primary" class="w-100" @click="showForm = !showForm">
+              {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
+            </v-btn>
+          </v-col>
+
+          <!-- Search Bar -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-text-field
+              v-model="globalSearch"
+              label="Search..."
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              density="compact"
+              class="search-input"
+            />
+          </v-col>
+
+          <!-- Export Button -->
+          <v-col cols="12" sm="4" md="3">
+            <v-btn color="success" variant="outlined" class="w-100" @click="exportToExcel">
+              <v-icon left>mdi-microsoft-excel</v-icon>
+              Export Excel
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-card-title>
-      
+
 
       <!-- Create/Edit Form -->
       <v-expand-transition>
@@ -158,7 +182,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="job in jobRequisitions" :key="job._id">
+      <tr v-for="job in filteredRequisitions" :key="job._id">
         <td>{{ job.jobRequisitionId }}</td>
         <td>{{ job.departmentId?.name }}</td>
         <td>{{ job.jobTitle }}</td>
@@ -200,12 +224,12 @@
   </v-container>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
+import * as XLSX from 'xlsx'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -228,6 +252,36 @@ const showForm = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 const highlightedCandidateId = ref(route.query.candidateId || null)
+
+const globalSearch = ref('')
+const filteredRequisitions = computed(() => {
+  if (!globalSearch.value) return jobRequisitions.value
+  const keyword = globalSearch.value.toLowerCase()
+  return jobRequisitions.value.filter(job =>
+    Object.values(job).some(val =>
+      String(val).toLowerCase().includes(keyword)
+    )
+  )
+})
+
+const exportToExcel = () => {
+  const rows = jobRequisitions.value.map(j => ({
+    'Job ID': j.jobRequisitionId,
+    'Department': j.departmentId?.name || '',
+    'Job Title': j.jobTitle,
+    'Recruiter': j.recruiter,
+    'Target Candidates': j.targetCandidates,
+    'Hiring Cost': j.hiringCost,
+    'Status': j.status,
+    'Opening Date': formatDisplayDate(j.openingDate),
+    'Start Date': formatDisplayDate(j.startDate)
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(rows)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
+  XLSX.writeFile(workbook, 'bluecollar_job_requisitions.xlsx')
+}
 
 
 const form = ref({
@@ -291,6 +345,8 @@ const fetchRequisitions = async () => {
     }))
 }
 
+
+
 const goToFilteredCandidates = (job, status) => {
   const base = {
     path: '/bluecollar/candidates',
@@ -298,44 +354,50 @@ const goToFilteredCandidates = (job, status) => {
   }
 
   if (status === 'Vacant') {
-    // Show those in Application, ManagerReview, Interview
     base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
-  }
-  else if (status === 'Suspended') {
-    if (job.offerCount > 0) {
-      // Yellow suspended — offer/hired
-      base.query.stages = ['JobOffer', 'Hired'].join(',')
-    } else {
-      // Gray suspended — stuck anywhere
-      base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
-    }
-  }
-  else if (status === 'Filled') {
+  } else if (status === 'Suspended') {
+    base.query.stages = job.offerCount > 0
+      ? ['JobOffer', 'Hired'].join(',')
+      : ['Application', 'ManagerReview', 'Interview'].join(',')
+  } else if (status === 'Filled') {
     base.query.stages = ['Onboard']
-  }
-  else if (status === 'Cancel') {
+  } else if (status === 'Cancel') {
     base.query.stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'].join(',')
   }
 
   router.push(base)
 }
 
-
 const handleSubmit = async () => {
   const payload = { ...form.value, type: 'Blue Collar' }
   try {
     if (isEditing.value) {
       await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
-      Swal.fire('✅ Updated', 'Job requisition updated', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Updated',
+        text: 'Job requisition updated',
+        allowEnterKey: true
+      })
     } else {
       await axios.post('/api/job-requisitions', payload)
-      Swal.fire('✅ Created', 'Job requisition created', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Created',
+        text: 'Job requisition created',
+        allowEnterKey: true
+      })
     }
     fetchRequisitions()
     resetForm()
     showForm.value = false
   } catch (err) {
-    Swal.fire('❌ Error', err?.response?.data?.message || 'Failed to submit', 'error')
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Error',
+      text: err?.response?.data?.message || 'Failed to submit',
+      allowEnterKey: true
+    })
   }
 }
 
@@ -361,10 +423,24 @@ const editRequisition = (job) => {
 }
 
 const deleteRequisition = async (id) => {
-  const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes' })
+  const confirm = await Swal.fire({
+    title: 'Delete Job Requisition?',
+    text: 'Are you sure you want to delete this requisition?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true,
+    confirmButtonColor: '#e53935'
+  })
   if (confirm.isConfirmed) {
     await axios.delete(`/api/job-requisitions/${id}`)
-    Swal.fire('Deleted', 'Requisition removed', 'success')
+    await Swal.fire({
+      icon: 'success',
+      title: '✅ Deleted',
+      text: 'Requisition removed',
+      allowEnterKey: true
+    })
     fetchRequisitions()
   }
 }
@@ -395,6 +471,7 @@ onMounted(() => {
   fetchRequisitions()
 })
 </script>
+
 
 <style scoped>
 .v-table {
@@ -452,8 +529,6 @@ onMounted(() => {
 .v-chip {
   border-radius: 9px !important; /* Fully rounded pill */
 }
-
-
 
 /* table */
 
@@ -522,5 +597,10 @@ onMounted(() => {
 }
 
 
-
+.search-input {
+  font-size: 13px;
+  min-height: 32px !important;
+  --v-field-padding-top: 4px;
+  --v-field-padding-bottom: 4px;
+}
 </style>

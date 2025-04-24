@@ -122,7 +122,6 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -177,15 +176,30 @@ const handleSubmit = async () => {
   try {
     if (form.value._id) {
       await axios.put(`http://localhost:5000/api/departments/${form.value._id}`, form.value)
-      Swal.fire('✅ Updated', 'Department updated successfully', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Updated',
+        text: 'Department updated successfully',
+        allowEnterKey: true
+      })
     } else {
       await axios.post('http://localhost:5000/api/departments', form.value)
-      Swal.fire('✅ Created', 'Department created successfully', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Created',
+        text: 'Department created successfully',
+        allowEnterKey: true
+      })
     }
     resetForm()
     fetchDepartments()
   } catch (err) {
-    Swal.fire('Error', err?.response?.data?.message || 'Failed to save department', 'error')
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Error',
+      text: err?.response?.data?.message || 'Failed to save department',
+      allowEnterKey: true
+    })
   } finally {
     loading.value = false
   }
@@ -198,7 +212,12 @@ const addRecruiter = async () => {
   })
   globalRecruiter.value = ''
   await fetchGlobalRecruiters()
-  Swal.fire('✅ Success', 'Recruiter added', 'success')
+  await Swal.fire({
+    icon: 'success',
+    title: '✅ Success',
+    text: 'Recruiter added',
+    allowEnterKey: true
+  })
 }
 
 const showEditDeleteOptions = async (recruiter) => {
@@ -208,7 +227,8 @@ const showEditDeleteOptions = async (recruiter) => {
     confirmButtonText: 'Edit',
     denyButtonText: 'Delete',
     showCancelButton: true,
-    icon: 'info'
+    icon: 'info',
+    allowEnterKey: true
   })
 
   if (action === true) {
@@ -217,12 +237,19 @@ const showEditDeleteOptions = async (recruiter) => {
       input: 'text',
       inputValue: recruiter.name,
       showCancelButton: true,
-      confirmButtonText: 'Update'
+      confirmButtonText: 'Update',
+      allowEnterKey: true,
+      inputValidator: value => !value.trim() && 'Recruiter name cannot be empty'
     })
     if (newName?.trim()) {
       await axios.put(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`, { name: newName })
       await fetchGlobalRecruiters()
-      Swal.fire('✅ Updated', 'Recruiter updated', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Updated',
+        text: 'Recruiter updated',
+        allowEnterKey: true
+      })
     }
   } else if (action === false) {
     const confirm = await Swal.fire({
@@ -230,12 +257,20 @@ const showEditDeleteOptions = async (recruiter) => {
       text: `Remove recruiter "${recruiter.name}"?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete'
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e53935',
+      allowEnterKey: true
     })
     if (confirm.isConfirmed) {
       await axios.delete(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`)
       await fetchGlobalRecruiters()
-      Swal.fire('✅ Deleted', 'Recruiter removed', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Deleted',
+        text: 'Recruiter removed',
+        allowEnterKey: true
+      })
     }
   }
 }
@@ -251,15 +286,28 @@ const confirmDelete = async (dept) => {
     text: 'This will remove the department.',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes'
+    confirmButtonText: 'Yes',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#e53935',
+    allowEnterKey: true
   })
   if (result.isConfirmed) {
     try {
       await axios.delete(`http://localhost:5000/api/departments/${dept._id}`)
       fetchDepartments()
-      Swal.fire('✅ Deleted', 'Department removed', 'success')
+      await Swal.fire({
+        icon: 'success',
+        title: '✅ Deleted',
+        text: 'Department removed',
+        allowEnterKey: true
+      })
     } catch (err) {
-      Swal.fire('Error', err?.response?.data?.message || 'Failed to delete department', 'error')
+      await Swal.fire({
+        icon: 'error',
+        title: '❌ Error',
+        text: err?.response?.data?.message || 'Failed to delete department',
+        allowEnterKey: true
+      })
     }
   }
 }
@@ -277,6 +325,7 @@ onMounted(() => {
   fetchGlobalRecruiters()
 })
 </script>
+
 
 <style scoped>
 .v-table {

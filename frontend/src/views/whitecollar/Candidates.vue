@@ -8,12 +8,37 @@
         <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">Candidates</v-btn>
       </div>
 
-      <v-card class="pa-5" elevation="5">
+      <v-card class="pa-5 mb-4" elevation="5"
+        >
         <v-card-title>
-          White Collar Candidates
-          <v-spacer />
-          <v-btn color="primary" @click="showForm = !showForm">{{ showForm ? 'Hide Form' : 'Add Candidate' }}</v-btn>
+          <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
+            <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+              <v-btn class="w-100" color="primary" @click="showForm = !showForm">
+                {{ showForm ? 'Hide Form' : '➕ Add Candidate' }}
+              </v-btn>
+            </v-col>
+
+            <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+              <v-text-field
+                v-model="globalSearch"
+                label="Search"
+                prepend-inner-icon="mdi-magnify"
+                hide-details
+                clearable
+                density="compact"
+                class="search-input"
+              />
+            </v-col>
+
+            <v-col cols="12" sm="4" md="3">
+              <v-btn class="w-100" variant="outlined" color="success" @click="exportToExcel">
+                <v-icon left>mdi-microsoft-excel</v-icon>
+                Export Excel
+              </v-btn>
+            </v-col>
+          </v-row>
         </v-card-title>
+
 
         <!-- Form -->
         <v-expand-transition>
@@ -51,29 +76,6 @@
           </div>
         </v-expand-transition>
 
-
-        <!-- Filter -->
-        <v-row dense class="my-4">
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="globalSearch"
-              label=" Search"
-              placeholder="Search"
-              prepend-inner-icon="mdi-magnify"
-              dense
-              outlined
-              clearable
-              hide-details
-            />
-          </v-col>
-          <v-col cols="12" md="6" class="text-right">
-            <v-btn color="success" class="mt-1" @click="exportToExcel" rounded>
-              📤 Export
-            </v-btn>
-          </v-col>
-        </v-row>
-
-
         <!-- Candidate Table -->
         <div class="table-wrapper">
           <table class="native-table sticky-table">
@@ -84,7 +86,7 @@
                 <th>Department</th>
                 <th>Job Title</th>
                 <th>Recruiter</th>
-                <th>Name</th>
+                <th>Candidate Name</th>
                 <th>Source</th>
                 <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
                 <th>Final Decision</th>
@@ -164,7 +166,6 @@
       </v-card>
     </v-container>
   </template>
-
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -175,11 +176,24 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as XLSX from 'xlsx'
 
-dayjs.extend(utc); dayjs.extend(timezone)
+dayjs.extend(utc)
+dayjs.extend(timezone)
 const tz = 'Asia/Phnom_Penh'
 
 const route = useRoute()
 const router = useRouter()
+
+// ✅ Alert Helper
+const alertBox = (icon, title, text = '', html = '') => {
+  return Swal.fire({
+    icon,
+    title,
+    text,
+    html,
+    allowEnterKey: true,
+    confirmButtonColor: '#1976d2'
+  })
+}
 
 const showForm = ref(false)
 const isEditMode = ref(false)
@@ -201,7 +215,6 @@ const stageCounts = ref({
   Hired: 0,
   Onboard: 0
 })
-
 
 setInterval(() => {
   const now = dayjs().tz(tz).format('YYYY-MM-DD')
@@ -229,9 +242,9 @@ const jobIsLocked = (c) => {
 }
 
 const stageDialog = ref({ show: false, candidate: null, stage: '', date: '' })
-const stageLabels = ['Recieved Application', 'Sent to Manager', 'Interviews', 'JobOffer', 'Hired', 'Onboard']
+const stageLabels = ['Received Application', 'Sent to Manager', 'Interviews', 'JobOffer', 'Hired', 'Onboard']
 const stageMap = {
-  'Recieved Application': 'Application',
+  'Received Application': 'Application',
   'Sent to Manager': 'ManagerReview',
   'Interviews': 'Interview',
   'JobOffer': 'JobOffer',
@@ -239,7 +252,7 @@ const stageMap = {
   'Onboard': 'Onboard'
 }
 const stageDisplayNames = {
-  Application: 'Recieved Application',
+  Application: 'Received Application',
   ManagerReview: 'Sent to Manager',
   Interview: 'Interviews',
   JobOffer: 'Job Offer',
@@ -256,14 +269,9 @@ const formatDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
 
 const selectDate = async (c, label) => {
   if (jobIsLocked(c)) {
-    await Swal.fire({
-      icon: 'error',
-      title: '🔒 Progress Locked',
-      text: 'Another candidate has already reached Job Offer for this Job ID. Please change Job ID to continue.',
-      confirmButtonText: 'OK', allowEnterKey: true
-    })
-    return
+    return alertBox('error', '🔒 Progress Locked', 'Another candidate has already reached Job Offer for this Job ID. Please change Job ID to continue.')
   }
+
   const backend = stageMap[label]
   stageDialog.value = {
     show: true,
@@ -283,45 +291,59 @@ const confirmStageDate = async () => {
       candidates.value[index].progressDates[stage] = date
       candidates.value[index].progress = stage
     }
-    Swal.fire({ icon: 'success', title: 'Stage Updated ✅', text: `${stageDisplayNames[stage]} was successfully updated for candidate "${candidate.fullName}"`, confirmButtonText: 'OK', allowEnterKey: true })
+    alertBox('success', 'Stage Updated ✅', `Stage "${stageDisplayNames[stage]}" updated for candidate "${candidate.fullName}".`)
   } catch (err) {
     const msg = err?.response?.data?.message || 'Progress update failed'
-    Swal.fire({ icon: 'error', title: '❌ Error', text: msg, confirmButtonText: 'Close', allowEnterKey: true })
+    alertBox('error', '❌ Error', msg)
   }
 }
 
 const handleFileUpload = files => form.value.documents = Array.isArray(files) ? files : [files]
 
 const handleSubmit = async () => {
-  const fd = new FormData()
-  Object.keys(form.value).forEach(k => {
-    if (k !== 'documents') fd.append(k, form.value[k])
-  })
-  form.value.documents.forEach(d => fd.append('documents', d))
+  try {
+    const fd = new FormData()
+    Object.keys(form.value).forEach(k => {
+      if (k !== 'documents') fd.append(k, form.value[k])
+    })
+    form.value.documents.forEach(d => fd.append('documents', d))
 
-  const method = isEditMode.value ? 'put' : 'post'
-  const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
-  const res = await axios[method](url, fd)
-  const updated = res.data.candidate
+    const method = isEditMode.value ? 'put' : 'post'
+    const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
+    const res = await axios[method](url, fd)
+    const updated = res.data.candidate
 
-  if (isEditMode.value) {
-    const jobRes = await axios.get(`/api/job-requisitions/${updated.jobRequisitionId}`)
-    updated.jobRequisitionId = jobRes.data
-    const index = candidates.value.findIndex(c => c._id === updated._id)
-    if (index !== -1) candidates.value[index] = updated
+    if (isEditMode.value) {
+      const jobRes = await axios.get(`/api/job-requisitions/${updated.jobRequisitionId}`)
+      updated.jobRequisitionId = jobRes.data
+      const index = candidates.value.findIndex(c => c._id === updated._id)
+      if (index !== -1) candidates.value[index] = updated
+    }
+
+    alertBox('success', '✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'} successfully.`)
+    resetForm()
+    await fetchCandidates()
+  } catch (err) {
+    alertBox('error', '❌ Submission Failed', err?.response?.data?.message || 'Could not save candidate.')
   }
-
-  Swal.fire('✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'}`, 'success')
-  resetForm()
-  await fetchCandidates()
 }
 
 const deleteCandidate = async id => {
-  const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true })
+  const confirm = await Swal.fire({
+    title: '🗑️ Delete Candidate?',
+    icon: 'warning',
+    text: 'Are you sure you want to delete this candidate?',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true,
+    confirmButtonColor: '#e53935'
+  })
   if (!confirm.isConfirmed) return
+
   await axios.delete(`/api/candidates/${id}`)
   await fetchCandidates()
-  Swal.fire('Deleted', '', 'success')
+  alertBox('success', '✅ Deleted', 'Candidate successfully removed.')
 }
 
 const filterCandidates = () => {
@@ -343,31 +365,29 @@ const fetchCandidates = async () => {
   const res = await axios.get('/api/candidates?type=White%20Collar')
   candidates.value = res.data
   filterCandidates()
-  
+
   const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
-const counts = {
-  Application: 0,
-  ManagerReview: 0,
-  Interview: 0,
-  JobOffer: 0,
-  Hired: 0,
-  Onboard: 0
-}
-
-for (const candidate of res.data) {
-  if (stages.includes(candidate.progress)) {
-    counts[candidate.progress] += 1
+  const counts = {
+    Application: 0,
+    ManagerReview: 0,
+    Interview: 0,
+    JobOffer: 0,
+    Hired: 0,
+    Onboard: 0
   }
-}
-stageCounts.value = counts
-
-
+  for (const candidate of res.data) {
+    if (stages.includes(candidate.progress)) {
+      counts[candidate.progress] += 1
+    }
+  }
+  stageCounts.value = counts
 }
 
 const fetchDepartments = async () => {
   const res = await axios.get('/api/departments?type=White Collar')
   departments.value = res.data
 }
+
 const fetchRecruiters = async () => {
   const res = await axios.get('/api/departments/global-recruiters')
   recruiters.value = res.data.map(r => r.name)
@@ -391,12 +411,11 @@ const updateRequisitionDetails = async (jobId) => {
 }
 
 const fetchJobRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions');
+  const res = await axios.get('/api/job-requisitions')
   jobRequisitionOptions.value = res.data
-    .filter(j => j.status === 'Vacant' && j.type === 'White Collar') // ✅ Only include White Collar
-    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }));
-};
-
+    .filter(j => j.status === 'Vacant' && j.type === 'White Collar')
+    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
+}
 
 const resetForm = () => {
   form.value = {
@@ -469,6 +488,7 @@ onMounted(() => {
   fetchRecruiters()
 })
 </script>
+
 
   <style scoped>
   .v-table { overflow-x: auto; white-space: nowrap; }
@@ -576,5 +596,11 @@ onMounted(() => {
   height: 30px;
 }
 
+.search-input {
+  font-size: 13px;
+  min-height: 32px !important;
+  --v-field-padding-top: 4px;
+  --v-field-padding-bottom: 4px;
+}
 
   </style>

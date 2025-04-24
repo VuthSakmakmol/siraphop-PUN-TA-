@@ -11,12 +11,40 @@
     <!-- Main Card -->
     <v-card class="pa-5" elevation="5">
       <!-- Toggle Form -->
+      
+      <!-- Title and Actions -->
       <v-card-title>
-        <v-btn color="primary" @click="showForm = !showForm" class="mr-4">
-          {{ showForm ? 'Close Form' : '➕ Create Job Requisitions' }}
-        </v-btn>
-        <v-spacer />
+        <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
+          <!-- Toggle Form -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-btn class="w-100" color="primary" @click="showForm = !showForm">
+              {{ showForm ? 'Close Form' : '➕ Create Job Requisition' }}
+            </v-btn>
+          </v-col>
+
+          <!-- Global Search -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-text-field
+              v-model="globalSearch"
+              label="Search"
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              clearable
+              density="compact"
+              class="search-input"
+            />
+          </v-col>
+
+          <!-- Export -->
+          <v-col cols="12" sm="4" md="3">
+            <v-btn class="w-100" variant="outlined" color="success" @click="exportToExcel">
+              <v-icon left>mdi-microsoft-excel</v-icon>
+              Export Excel
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-card-title>
+
 
       <!-- Create/Edit Form -->
       <v-expand-transition>
@@ -133,22 +161,6 @@
         </div>
       </v-expand-transition>
 
-      <!-- Search + Export -->
-      <v-row dense class="my-4">
-        <v-col cols="12" md="6">
-          <v-text-field
-            v-model="globalSearch"
-            label="🔍 Search Job Requisitions"
-            placeholder="Search by job ID, department, recruiter..."
-            dense outlined clearable hide-details
-          />
-        </v-col>
-        <v-col cols="12" md="6" class="text-right">
-          <v-btn color="success" class="mt-1" @click="exportToExcel" rounded>
-            📤 Export
-          </v-btn>
-        </v-col>
-      </v-row>
 
       <!-- Requisition Table -->
       <div class="table-wrapper">
@@ -208,7 +220,6 @@
   </v-container>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
@@ -251,6 +262,7 @@ const startDateMenu = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 const showForm = ref(false)
+const exportInProgress = ref(false)
 const router = useRouter()
 const route = useRoute()
 
@@ -277,6 +289,19 @@ const statusOptions = [
   { title: 'Cancel', value: 'Cancel' }
 ]
 
+// 🔔 Standardized alert
+const alertBox = (icon, title, text, html = '') => {
+  return Swal.fire({
+    icon,
+    title,
+    text,
+    html,
+    allowEnterKey: true,
+    confirmButtonColor: '#1976d2'
+  })
+}
+
+// 📦 Fetch
 const fetchDepartments = async () => {
   const res = await axios.get('/api/departments?type=White Collar')
   departments.value = res.data
@@ -285,6 +310,18 @@ const fetchDepartments = async () => {
 const fetchGlobalRecruiters = async () => {
   const res = await axios.get('/api/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
+}
+
+const fetchRequisitions = async () => {
+  const res = await axios.get('/api/job-requisitions')
+  jobRequisitions.value = res.data
+    .filter(j => j.type === 'White Collar')
+    .map(j => ({
+      ...j,
+      remainingCandidates: j.targetCandidates - j.onboardCount,
+      departmentName: j.departmentId?.name || '—',
+      offerCount: Number(j.offerCount) || 0
+    }))
 }
 
 const onDepartmentChange = () => {
@@ -296,57 +333,23 @@ const onDepartmentChange = () => {
   }
 }
 
-const fetchRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
-  jobRequisitions.value = res.data
-  .filter(j => j.type === 'White Collar') // ⬅️ Add this line
-  .map(j => ({
-    ...j,
-    remainingCandidates: j.targetCandidates - j.onboardCount,
-    departmentName: j.departmentId?.name || '—',
-    offerCount: Number(j.offerCount) || 0
-  }))
-}
-
-
-const viewStageCandidates = (item) => {
-  const base = {
-    path: '/whitecollar/candidates',
-    query: { jobRequisitionId: item._id }
-  }
-
-  // Set stage filters depending on status
-  switch (item.status) {
-    case 'Vacant':
-      base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
-      break
-    case 'Suspended':
-      base.query.stages = item.offerCount > 0
-        ? ['JobOffer', 'Hired'].join(',')
-        : ['Application', 'ManagerReview', 'Interview'].join(',')
-      break
-    case 'Filled':
-      base.query.stages = ['Onboard']
-      break
-    case 'Cancel':
-      base.query.stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'].join(',')
-      break
-    default:
-      base.query.stages = ''
-  }
-
-  router.push(base)
-}
-
-
+// 📤 Export
 const exportToExcel = () => {
   if (exportInProgress.value) return
   exportInProgress.value = true
 
+  Swal.fire({
+    title: '⏳ Preparing Export',
+    text: 'Generating Excel file...',
+    timer: 1000,
+    icon: 'info',
+    showConfirmButton: false
+  })
+
   try {
     const data = jobRequisitions.value.map(item => ({
       'Job ID': item.jobRequisitionId,
-      'Department': item.departmentName || '—',
+      'Department': item.departmentName,
       'Job Title': item.jobTitle,
       'Recruiter': item.recruiter,
       'Target': item.targetCandidates,
@@ -369,11 +372,17 @@ const exportToExcel = () => {
     exportInProgress.value = false
   }
 }
+
+// 🧾 Submit
 const handleSubmit = async () => {
   const payload = { ...form.value }
 
+  if (!payload.departmentId || !payload.jobTitle) {
+    return alertBox('warning', '⚠ Required Fields Missing', 'Please select a department and job title.')
+  }
+
   if (!payload.recruiter) {
-    return Swal.fire('⚠ Missing Recruiter', 'Please select a recruiter before submitting.', 'warning')
+    return alertBox('warning', '⚠ Missing Recruiter', 'Please select a recruiter before submitting.')
   }
 
   try {
@@ -383,20 +392,20 @@ const handleSubmit = async () => {
         const offerCount = check.data.count || 0
 
         if (offerCount > 0) {
-          return Swal.fire({
-            icon: 'warning',
-            title: '⚠ Cannot set to Vacant',
-            html: `There are still <b>${offerCount}</b> candidate(s) in <b>Job Offer</b> stage.<br>Please resolve them first.`,
-            confirmButtonColor: '#7367f0'
-          })
+          return alertBox(
+            'warning',
+            '⚠ Cannot Change to Vacant',
+            '',
+            `There are still <b>${offerCount}</b> candidate(s) in <b>Job Offer</b> stage.<br>Please resolve them before changing status.`
+          )
         }
       }
 
       await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
-      Swal.fire('✅ Updated', 'Job requisition updated successfully', 'success')
+      await alertBox('success', '✅ Updated', 'Job requisition updated successfully.')
     } else {
       await axios.post('/api/job-requisitions', payload)
-      Swal.fire('✅ Created', 'Job requisition created successfully', 'success')
+      await alertBox('success', '✅ Created', 'Job requisition created successfully.')
     }
 
     fetchRequisitions()
@@ -405,12 +414,11 @@ const handleSubmit = async () => {
 
   } catch (err) {
     const msg = err?.response?.data?.message || 'Failed to submit'
-    Swal.fire('❌ Error', msg, 'error')
+    await alertBox('error', '❌ Submission Error', msg)
   }
 }
 
-
-
+// 🛠 Edit
 const editRequisition = (job) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   isEditing.value = true
@@ -429,20 +437,27 @@ const editRequisition = (job) => {
   onDepartmentChange()
 }
 
+// 🗑️ Delete
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
-    title: 'Delete?',
+    title: '🗑️ Confirm Deletion',
+    text: 'Are you sure you want to delete this job requisition?',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Yes, delete it'
+    confirmButtonText: 'Yes, delete it',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true,
+    confirmButtonColor: '#e53935'
   })
+
   if (confirm.isConfirmed) {
     await axios.delete(`/api/job-requisitions/${id}`)
-    Swal.fire('Deleted', 'Requisition removed', 'success')
+    await alertBox('success', '✅ Deleted', 'Job requisition has been removed.')
     fetchRequisitions()
   }
 }
 
+// 🔄 Reset
 const resetForm = () => {
   form.value = {
     departmentId: '',
@@ -461,8 +476,10 @@ const resetForm = () => {
   recruiters.value = []
 }
 
+// 📆 Format Date
 const formatDate = val => val ? new Date(val).toLocaleDateString() : ''
 
+// 🔍 Filter
 const filteredRequisitions = computed(() => {
   if (!globalSearch.value) return jobRequisitions.value
   const keyword = globalSearch.value.toLowerCase()
@@ -473,12 +490,42 @@ const filteredRequisitions = computed(() => {
   )
 })
 
+// 👥 Stage Filter Nav
+const viewStageCandidates = (item) => {
+  const base = {
+    path: '/whitecollar/candidates',
+    query: { jobRequisitionId: item._id }
+  }
+
+  switch (item.status) {
+    case 'Vacant':
+      base.query.stages = ['Application', 'ManagerReview', 'Interview'].join(',')
+      break
+    case 'Suspended':
+      base.query.stages = item.offerCount > 0
+        ? ['JobOffer', 'Hired'].join(',')
+        : ['Application', 'ManagerReview', 'Interview'].join(',')
+      break
+    case 'Filled':
+      base.query.stages = ['Onboard']
+      break
+    case 'Cancel':
+      base.query.stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'].join(',')
+      break
+    default:
+      base.query.stages = ''
+  }
+
+  router.push(base)
+}
+
 onMounted(() => {
   fetchDepartments()
   fetchRequisitions()
   fetchGlobalRecruiters()
 })
 </script>
+
 
 <style scoped>
 .v-btn {

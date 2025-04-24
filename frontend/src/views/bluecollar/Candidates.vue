@@ -8,14 +8,39 @@
       <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">Candidates</v-btn>
     </div>
 
-    <v-card class="pa-5" elevation="5">
+    <v-card class="pa-5 mb-4" elevation="5">
       <v-card-title>
-        Blue Collar Candidates
-        <v-spacer />
-        <v-btn color="primary" @click="showForm = !showForm">
-          {{ showForm ? 'Hide Form' : 'Add Candidate' }}
-        </v-btn>
+        <v-row class="w-100"  align-content="center" justify="start" no-gutters dense>
+          <!-- Toggle Form -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-btn class="w-100" color="primary" @click="showForm = !showForm">
+              {{ showForm ? 'Hide Form' : '➕ Add Candidate' }}
+            </v-btn>
+          </v-col>
+
+          <!-- Search Field -->
+          <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
+            <v-text-field
+              v-model="globalSearch"
+              label="Search"
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              clearable
+              density="compact"
+              class="search-input"
+            />
+          </v-col>
+
+          <!-- Export Excel -->
+          <v-col cols="12" sm="4" md="3">
+            <v-btn class="w-100" variant="outlined" color="success" @click="exportToExcel">
+              <v-icon left>mdi-microsoft-excel</v-icon>
+              Export Excel
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-card-title>
+
 
       <!-- Form -->
       <v-expand-transition>
@@ -45,7 +70,7 @@
               <v-col cols="12" md="6">
                 <v-file-input multiple label="Upload Documents" @change="handleFileUpload" />
               </v-col>
-              <v-col cols="12">
+              <v-col cols="12" class="mb-3">
                 <v-btn type="submit" color="success">Submit</v-btn>
               </v-col>
             </v-row>
@@ -54,11 +79,11 @@
       </v-expand-transition>
 
       <!-- Filters -->
-      <v-divider class="my-4" />
+      <!-- <v-divider class="my-4" />
       <div class="d-flex justify-space-between align-center">
         <v-btn color="success" @click="exportToExcel">Export</v-btn>
         <v-text-field v-model="globalSearch" label="Search" prepend-inner-icon="mdi-magnify" clearable />
-      </div>
+      </div> -->
 
       <!-- Candidate Table -->
       <div class="table-wrapper">
@@ -154,6 +179,7 @@
     </v-card>
   </v-container>
 </template>
+
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -182,11 +208,7 @@ const recruiters = ref([])
 const globalSearch = ref('')
 
 const jobIdFilter = ref(route.query.jobRequisitionId || null)
-
-// ✅ FIX: handle stages safely whether string or array
-const getStageFilter = val =>
-  Array.isArray(val) ? val : (val || '').split(',').filter(Boolean)
-
+const getStageFilter = val => Array.isArray(val) ? val : (val || '').split(',').filter(Boolean)
 const stageFilter = ref(getStageFilter(route.query.stages))
 const highlightedCandidateId = ref(route.query.candidateId || null)
 
@@ -262,10 +284,20 @@ const confirmStageDate = async () => {
       candidates.value[index].progressDates[stage] = date
       candidates.value[index].progress = stage
     }
-    Swal.fire('✅ Updated', `${stage} updated`, 'success')
+    await Swal.fire({
+      icon: 'success',
+      title: '✅ Updated',
+      text: `${stage} updated successfully.`,
+      allowEnterKey: true
+    })
   } catch (err) {
     const msg = err?.response?.data?.message || 'Progress update failed'
-    Swal.fire('❌ Error', msg, 'error')
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Error',
+      text: msg,
+      allowEnterKey: true
+    })
   }
 }
 
@@ -283,22 +315,27 @@ const handleSubmit = async () => {
   const method = isEditMode.value ? 'put' : 'post'
   const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
 
-  let updateSuccess = false
   try {
     await axios[method](url, fd)
-    updateSuccess = true
-    Swal.fire('✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'}`, 'success')
-  } catch (err) {
-    Swal.fire('❌ Error', err?.response?.data?.message || 'Submission failed', 'error')
-  }
-
-  if (updateSuccess) {
+    await Swal.fire({
+      icon: 'success',
+      title: '✅ Success',
+      text: `Candidate ${isEditMode.value ? 'updated' : 'created'} successfully.`,
+      allowEnterKey: true
+    })
     await fetchCandidates()
     if (isEditMode.value) {
       const updated = candidates.value.find(c => c._id === editingCandidateId.value)
       if (updated) form.value.jobRequisitionId = updated.jobRequisitionId?._id || ''
     }
     resetForm()
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Submission Failed',
+      text: err?.response?.data?.message || 'Could not save candidate.',
+      allowEnterKey: true
+    })
   }
 }
 
@@ -323,11 +360,26 @@ const editCandidate = id => {
 }
 
 const deleteCandidate = async id => {
-  const confirm = await Swal.fire({ title: 'Delete?', icon: 'warning', showCancelButton: true })
+  const confirm = await Swal.fire({
+    title: '🗑️ Delete Candidate?',
+    text: 'Are you sure you want to remove this candidate?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true,
+    confirmButtonColor: '#e53935'
+  })
   if (!confirm.isConfirmed) return
+
   await axios.delete(`/api/candidates/${id}`)
   await fetchCandidates()
-  Swal.fire('Deleted', '', 'success')
+  await Swal.fire({
+    icon: 'success',
+    title: '✅ Deleted',
+    text: 'Candidate removed successfully.',
+    allowEnterKey: true
+  })
 }
 
 const exportToExcel = () => {
@@ -352,24 +404,36 @@ const exportToExcel = () => {
   XLSX.utils.book_append_sheet(wb, ws, 'BlueCollarCandidates')
   XLSX.writeFile(wb, 'bluecollar_candidates.xlsx')
 }
-
 const filterCandidates = () => {
+  const search = globalSearch.value?.toLowerCase().trim() || ''
   filteredCandidates.value = candidates.value.filter(c => {
     const matchJob = !jobIdFilter.value || c.jobRequisitionId?._id === jobIdFilter.value
     const matchStage = stageFilter.value.length === 0 || stageFilter.value.includes(c.progress)
-    return matchJob && matchStage
+
+    const text = [
+      c.candidateId,
+      c.fullName,
+      c.recruiter,
+      c.jobRequisitionId?.jobRequisitionId,
+      c.jobRequisitionId?.departmentId?.name,
+      c.jobRequisitionId?.jobTitle,
+      c.applicationSource,
+      c.hireDecision,
+      ...Object.values(c.progressDates || {})
+    ].join(' ').toLowerCase()
+
+    const matchSearch = !search || text.includes(search)
+
+    return matchJob && matchStage && matchSearch
   })
 }
+
 
 const fetchJobRequisitions = async () => {
   const res = await axios.get('/api/job-requisitions')
   jobRequisitionOptions.value = res.data
-    .filter(j => j.type === 'Blue Collar' && j.status === 'Vacant') // Only Vacant
-    .map(j => ({
-      ...j,
-      displayName: `${j.jobRequisitionId} - ${j.jobTitle}` // 👈 Clean label
-    }))
-    
+    .filter(j => j.type === 'Blue Collar' && j.status === 'Vacant')
+    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
 }
 
 const fetchCandidates = async () => {
@@ -400,6 +464,9 @@ onMounted(() => {
   fetchCandidates()
 })
 </script>
+
+
+
 <style scoped>
 
 .v-table {
@@ -548,6 +615,13 @@ onMounted(() => {
   height: 30px;
 }
 
+
+.search-input {
+  font-size: 13px;
+  min-height: 32px !important;
+  --v-field-padding-top: 4px;
+  --v-field-padding-bottom: 4px;
+}
 
 </style>
 
