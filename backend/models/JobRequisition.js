@@ -1,8 +1,5 @@
 const mongoose = require('mongoose');
 
-
-
-  
 const jobRequisitionSchema = new mongoose.Schema({
   jobRequisitionId: { type: String, required: true, unique: true },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
@@ -27,4 +24,3 @@ module.exports = mongoose.model('JobRequisition', jobRequisitionSchema);
 
 
 
-module.exports = mongoose.model('JobRequisition', jobRequisitionSchema);

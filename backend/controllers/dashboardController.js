@@ -373,9 +373,10 @@ exports.getVacancyKPIs = async (req, res) => {
     const activeVacancies = jobs.filter(j => j.status === 'Vacant').length;
 
     const hiringCost = jobs.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
+    
     const onboarded = jobRequisitions.reduce((sum, j) => sum + (j.onboardCount || 0), 0);
 
-    const costPerHire = onboarded > 0 ? (hiringCost / onboarded).toFixed(2) : '-';
+    const costPerHire = onboarded > 0 ? Number((totalCost / onboarded).toFixed(2)) : '-';
     const fillRate = totalRequisitions > 0 ? ((filled / totalRequisitions) * 100).toFixed(1) : '0';
 
     res.json({
