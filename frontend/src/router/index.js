@@ -48,7 +48,15 @@ const routes = [
   { path: '/bluecollar/candidates/:id', name: 'BlueCollarCandidateDetail', component: BlueCollarCandidateDetail, meta: { requiresAuth: true } },
 
   // 📄 Reports
-  { path: '/reports', name: 'Reports', component: Reports, meta: { requiresAuth: true } }
+  { path: '/reports', name: 'Reports', component: Reports, meta: { requiresAuth: true } },
+
+  // Roadmap
+  {
+    path: '/roadmap',
+    name: 'Roadmap',
+    component: () => import('@/views/Roadmap.vue'),
+  },
+  
 ]
 
 const router = createRouter({

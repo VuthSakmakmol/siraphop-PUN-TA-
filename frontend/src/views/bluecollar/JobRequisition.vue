@@ -510,16 +510,16 @@ onMounted(() => {
   color: #1976d2;
 }
 .status-filled {
-  background-color: #c2e1b4;
-  color: #2fc837;
+  background-color: #c8e6c9;
+  color: #388e3c;
 }
 .status-cancel {
   background-color: #ffcdd2;
   color: #b71c1c;
 }
 .status-suspended-green {
-  background-color: #939671;
-  color: #e6fa06;
+  background-color: #eff0af;
+  color: #535322;
 }
 .status-suspended-gray {
   background-color: #eceae0;
@@ -527,7 +527,7 @@ onMounted(() => {
 }
 
 .v-chip {
-  border-radius: 9px !important; /* Fully rounded pill */
+  border-radius: 5px !important; /* Fully rounded pill */
 }
 
 /* table */

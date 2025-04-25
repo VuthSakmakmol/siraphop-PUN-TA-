@@ -1,0 +1,218 @@
+<template>
+    <v-container>
+      <!-- Title + Create Button -->
+      <v-row class="mb-4" align="center" justify="space-between">
+        <v-col cols="auto">
+          <h2 class="text-h6 font-weight-bold">Roadmap HC Management</h2>
+        </v-col>
+        <v-col cols="auto">
+          <v-btn color="primary" @click="openCreateDialog">
+            Add New
+          </v-btn>
+        </v-col>
+      </v-row>
+  
+      <!-- Filters -->
+      <v-row dense class="mb-4">
+        <v-col cols="12" md="4">
+          <v-select
+            v-model="filterYear"
+            :items="yearOptions"
+            label="Filter by Year"
+            clearable
+          />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-select
+            v-model="filterType"
+            :items="['White Collar', 'Blue Collar']"
+            label="Filter by Type"
+            clearable
+          />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-btn color="primary" @click="fetchRoadmaps">
+            Apply Filter
+          </v-btn>
+        </v-col>
+      </v-row>
+  
+      <!-- Roadmap Table -->
+      <v-table dense>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Month</th>
+            <th>Type</th>
+            <th>Roadmap HC</th>
+            <th>Actual HC</th>
+            <th>Hiring Target HC</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in roadmaps" :key="item._id">
+            <td>{{ item.year }}</td>
+            <td>{{ item.month }}</td>
+            <td>{{ item.type }}</td>
+            <td>{{ item.roadmapHC }}</td>
+            <td>{{ item.actualHC }}</td>
+            <td>{{ item.hiringTargetHC }}</td>
+            <td>
+              <v-btn size="small" variant="tonal" color="primary" @click="editRoadmap(item)">Edit</v-btn>
+              <v-btn size="small" variant="tonal" color="error" @click="deleteRoadmap(item._id)">Delete</v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+  
+      <!-- Create/Edit Dialog -->
+      <v-dialog v-model="dialog" max-width="600">
+        <v-card>
+          <v-card-title class="text-h6 font-weight-bold">
+            {{ editMode ? 'Edit Roadmap' : 'Create Roadmap' }}
+          </v-card-title>
+  
+          <v-divider />
+  
+          <v-card-text>
+            <v-form @submit.prevent="saveRoadmap">
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-select v-model="form.year" :items="yearOptions" label="Year" required />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-select v-model="form.month" :items="monthOptions" label="Month" required />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-select v-model="form.type" :items="['White Collar', 'Blue Collar']" label="Type" required />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field v-model="form.roadmapHC" type="number" label="Roadmap HC" required />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field v-model="form.actualHC" type="number" label="Actual HC" required />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field v-model="form.hiringTargetHC" type="number" label="Hiring Target HC" required />
+                </v-col>
+              </v-row>
+            </v-form>
+          </v-card-text>
+  
+          <v-divider />
+  
+          <v-card-actions class="justify-end">
+            <v-btn variant="tonal" @click="dialog = false">Cancel</v-btn>
+            <v-btn color="primary" @click="saveRoadmap">{{ editMode ? 'Update' : 'Create' }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-container>
+  </template>
+  
+  <script setup>
+  import { ref, onMounted } from 'vue'
+  import axios from 'axios'
+  import Swal from 'sweetalert2'
+  
+  const roadmaps = ref([])
+  const filterYear = ref('')
+  const filterType = ref('')
+  const dialog = ref(false)
+  const editMode = ref(false)
+  const form = ref({
+    year: '',
+    month: '',
+    roadmapHC: '',
+    actualHC: '',
+    hiringTargetHC: '',
+    type: '',
+  })
+  const selectedId = ref(null)
+  
+  const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
+  const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  
+  const fetchRoadmaps = async () => {
+    try {
+      let url = '/api/roadmap'
+      const params = []
+      if (filterYear.value) params.push(`year=${filterYear.value}`)
+      if (filterType.value) params.push(`type=${filterType.value}`)
+      if (params.length) url += '?' + params.join('&')
+  
+      const res = await axios.get(url)
+      roadmaps.value = res.data
+    } catch (err) {
+      console.error(err)
+    }
+  }
+  
+  const openCreateDialog = () => {
+    resetForm()
+    editMode.value = false
+    dialog.value = true
+  }
+  
+  const editRoadmap = (item) => {
+    form.value = { ...item }
+    selectedId.value = item._id
+    editMode.value = true
+    dialog.value = true
+  }
+  
+  const saveRoadmap = async () => {
+    try {
+      if (editMode.value) {
+        await axios.put(`/api/roadmap/${selectedId.value}`, form.value)
+        Swal.fire('Success', 'Roadmap updated successfully', 'success')
+      } else {
+        await axios.post('/api/roadmap', form.value)
+        Swal.fire('Success', 'Roadmap created successfully', 'success')
+      }
+      dialog.value = false
+      fetchRoadmaps()
+    } catch (err) {
+      console.error(err)
+      Swal.fire('Error', 'Failed to save roadmap', 'error')
+    }
+  }
+  
+  const deleteRoadmap = async (id) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'This will delete the roadmap entry!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+    })
+  
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`/api/roadmap/${id}`)
+        Swal.fire('Deleted!', 'Roadmap entry has been deleted.', 'success')
+        fetchRoadmaps()
+      } catch (err) {
+        console.error(err)
+        Swal.fire('Error', 'Failed to delete roadmap', 'error')
+      }
+    }
+  }
+  
+  const resetForm = () => {
+    form.value = {
+      year: '',
+      month: '',
+      roadmapHC: '',
+      actualHC: '',
+      hiringTargetHC: '',
+      type: '',
+    }
+  }
+  
+  onMounted(() => {
+    fetchRoadmaps()
+  })
+  </script>
+  

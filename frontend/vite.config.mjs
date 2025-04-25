@@ -52,15 +52,15 @@ export default defineConfig({
     ],
   },
   server: {
-    port: 3000,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        // rewrite removed to preserve /api path — backend uses /api prefix already
-      }
-    }
-  },
+        secure: false,
+      },
+    },
+  }
+  ,
   css: {
     preprocessorOptions: {
       scss: {

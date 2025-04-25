@@ -26,6 +26,12 @@ app.use('/api/candidates', require('./routes/candidateRoutes'));
 app.use('/api/job-requisitions', require('./routes/jobRequisitionRoutes'));
 app.use('/api/dashboard', require('./api/dashboard')); // Dashboard routes
 
+
+//Roadmap
+const roadmapRoutes = require('./routes/roadmapRoutes');
+app.use('/api/roadmap', roadmapRoutes);
+
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

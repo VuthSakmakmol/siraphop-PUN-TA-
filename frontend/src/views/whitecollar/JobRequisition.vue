@@ -571,26 +571,26 @@ onMounted(() => {
   color: #1976d2;
 }
 .status-filled {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: #c8e6c9;
+  color: #388e3c;
 }
 .status-cancel {
   background-color: #ffcdd2;
   color: #b71c1c;
 }
 .status-suspended-green {
-  background-color: #c8e6c9;
-  color: #388e3c;
+  background-color: #eff0af;
+  color: #535322;
 }
 
 .status-suspended-gray {
   background-color: #f2f2f2;
   color: #777;
 }
-.status-suspended-yellow {
+/* .status-suspended-yellow {
   background-color: #fff8e1;
-  color: #f9a825;
-}
+  color: #5c4117;
+} */
 
 .table-wrapper {
   max-height: 500px;
