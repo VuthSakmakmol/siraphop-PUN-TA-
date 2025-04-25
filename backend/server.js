@@ -24,12 +24,19 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/departments', require('./routes/departmentRoutes'));  // Department + Recruiter logic
 app.use('/api/candidates', require('./routes/candidateRoutes'));
 app.use('/api/job-requisitions', require('./routes/jobRequisitionRoutes'));
-app.use('/api/dashboard', require('./api/dashboard')); // Dashboard routes
+
+
+const dashboardRoutes = require('./api/dashboard'); // or wherever your file is
+app.use('/api/dashboard', dashboardRoutes);
 
 
 //Roadmap
 const roadmapRoutes = require('./routes/roadmapRoutes');
 app.use('/api/roadmap', roadmapRoutes);
+
+//Report
+const reportRoutes = require('./routes/reportRoutes')
+app.use('/api/report', reportRoutes)
 
 
 // Start server

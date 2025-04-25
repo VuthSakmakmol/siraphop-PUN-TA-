@@ -260,7 +260,7 @@ const stageDisplayNames = {
   Onboard: 'Onboard'
 }
 
-const sources = ['Agency','FIF','Facebook','Job portal','LinkedIn','Telegram','Other']
+const sources = ['Agency','Banner / Job Announment Board','Brochure','FIF','Facebook','HR Call','Job Portal','LinkedIn','Telegram','Other']
 const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
 const currentRoute = computed(() => route.path.split('/')[2])
 const goTo = path => router.push(path)

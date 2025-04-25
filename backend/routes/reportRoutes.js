@@ -1,8 +1,8 @@
 const express = require('express')
 const router = express.Router()
-const { getMonthlyPerformance } = require('../controllers/reportController')
+const reportController = require('../controllers/reportController')
 
-// ✅ Correct
-router.get('/monthly-performance', getMonthlyPerformance)
+// ✅ Use the function, not the whole object
+router.get('/', reportController.getReport)
 
 module.exports = router

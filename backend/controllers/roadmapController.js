@@ -3,16 +3,18 @@ const Roadmap = require('../models/Roadmap');
 // GET all roadmaps (with optional filters)
 exports.getRoadmaps = async (req, res) => {
   try {
-    const query = {};
-    if (req.query.year) query.year = parseInt(req.query.year);
-    if (req.query.type) query.type = req.query.type;
+    const query = {}
+    if (req.query.year) query.year = parseInt(req.query.year)
+    if (req.query.type) query.type = req.query.type
+    if (req.query.month) query.month = req.query.month
 
-    const data = await Roadmap.find(query).sort({ year: 1, month: 1 });
-    res.json(data);
+    const data = await Roadmap.find(query).sort({ year: 1, month: 1 })
+    res.json(data)
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching roadmaps' });
+    res.status(500).json({ message: 'Error fetching roadmaps' })
   }
-};
+}
+
 
 // CREATE
 exports.createRoadmap = async (req, res) => {

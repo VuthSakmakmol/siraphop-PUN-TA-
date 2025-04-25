@@ -223,7 +223,7 @@ const stageMap = {
   'Onboard': 'Onboard'
 }
 
-const sources = ['LinkedIn', 'Facebook', 'Referral', 'Agency', 'Telegram', 'Job portal']
+const sources = ['Agency','Banner / Job Announment Board','Brochure','FIF','Facebook','HR Call','Job Portal','LinkedIn','Telegram','Other']
 const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
 
 const form = ref({

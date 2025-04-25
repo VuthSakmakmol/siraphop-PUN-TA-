@@ -1,5 +1,8 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
+
+
+  
 const jobRequisitionSchema = new mongoose.Schema({
   jobRequisitionId: { type: String, required: true, unique: true },
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', required: true },
@@ -15,7 +18,13 @@ const jobRequisitionSchema = new mongoose.Schema({
     type: String,
     enum: ['White Collar', 'Blue Collar'],
     required: true
-  }
+  },
+  onboardCount: { type: Number, default: 0 } // ✅ NEW FIELD
 }, { timestamps: true })
 
-module.exports = mongoose.model('JobRequisition', jobRequisitionSchema)
+module.exports = mongoose.model('JobRequisition', jobRequisitionSchema);
+
+
+
+
+module.exports = mongoose.model('JobRequisition', jobRequisitionSchema);

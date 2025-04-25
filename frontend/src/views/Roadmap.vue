@@ -15,56 +15,58 @@
       <!-- Filters -->
       <v-row dense class="mb-4">
         <v-col cols="12" md="4">
-          <v-select
-            v-model="filterYear"
-            :items="yearOptions"
-            label="Filter by Year"
-            clearable
-          />
+          <v-select v-model="filterYear" :items="yearOptions" label="Filter by Year" clearable />
         </v-col>
         <v-col cols="12" md="4">
-          <v-select
-            v-model="filterType"
-            :items="['White Collar', 'Blue Collar']"
-            label="Filter by Type"
-            clearable
-          />
+          <v-select v-model="filterType" :items="['White Collar', 'Blue Collar']" label="Filter by Type" clearable />
         </v-col>
         <v-col cols="12" md="4">
-          <v-btn color="primary" @click="fetchRoadmaps">
-            Apply Filter
-          </v-btn>
+          <v-select v-model="filterMonth" :items="monthOptions" label="Filter by Month" clearable />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-btn color="primary" @click="fetchRoadmaps">Apply Filter</v-btn>
         </v-col>
       </v-row>
+
   
-      <!-- Roadmap Table -->
-      <v-table dense>
-        <thead>
-          <tr>
-            <th>Year</th>
-            <th>Month</th>
-            <th>Type</th>
-            <th>Roadmap HC</th>
-            <th>Actual HC</th>
-            <th>Hiring Target HC</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in roadmaps" :key="item._id">
-            <td>{{ item.year }}</td>
-            <td>{{ item.month }}</td>
-            <td>{{ item.type }}</td>
-            <td>{{ item.roadmapHC }}</td>
-            <td>{{ item.actualHC }}</td>
-            <td>{{ item.hiringTargetHC }}</td>
-            <td>
-              <v-btn size="small" variant="tonal" color="primary" @click="editRoadmap(item)">Edit</v-btn>
-              <v-btn size="small" variant="tonal" color="error" @click="deleteRoadmap(item._id)">Delete</v-btn>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+      <!-- Roadmap Table (Responsive Scrollable) -->
+      <!-- Roadmap Table (Responsive Scrollable, 1-row layout) -->
+      <div class="roadmap-table-wrapper">
+        <v-table density="compact" class="rounded">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Month</th>
+              <th>Type</th>
+              <th>Roadmap HC from planning</th>
+              <th>Actual HC ( end of month )</th>
+              <th>Hiring Target (HC)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in roadmaps" :key="item._id">
+              <td>{{ item.year }}</td>
+              <td>{{ item.month }}</td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.roadmapHC }}</td>
+              <td>{{ item.actualHC }}</td>
+              <td>{{ item.hiringTargetHC }}</td>
+              <td>
+                <div class="action-btn-group">
+                  <v-btn size="small" variant="tonal" color="primary" @click="editRoadmap(item)">
+                    Edit
+                  </v-btn>
+                  <v-btn size="small" variant="tonal" color="error" @click="deleteRoadmap(item._id)">
+                    Delete
+                  </v-btn>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+
   
       <!-- Create/Edit Dialog -->
       <v-dialog v-model="dialog" max-width="600">
@@ -119,6 +121,7 @@
   const roadmaps = ref([])
   const filterYear = ref('')
   const filterType = ref('')
+  const filterMonth = ref('')
   const dialog = ref(false)
   const editMode = ref(false)
   const form = ref({
@@ -131,23 +134,25 @@
   })
   const selectedId = ref(null)
   
-  const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i)
+  const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i)
   const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   
   const fetchRoadmaps = async () => {
-    try {
-      let url = '/api/roadmap'
-      const params = []
-      if (filterYear.value) params.push(`year=${filterYear.value}`)
-      if (filterType.value) params.push(`type=${filterType.value}`)
-      if (params.length) url += '?' + params.join('&')
-  
-      const res = await axios.get(url)
-      roadmaps.value = res.data
-    } catch (err) {
-      console.error(err)
-    }
+  try {
+    let url = '/api/roadmap'
+    const params = []
+    if (filterYear.value) params.push(`year=${filterYear.value}`)
+    if (filterType.value) params.push(`type=${filterType.value}`)
+    if (filterMonth.value) params.push(`month=${filterMonth.value}`)
+    if (params.length) url += '?' + params.join('&')
+
+    const res = await axios.get(url)
+    roadmaps.value = res.data
+  } catch (err) {
+    console.error(err)
   }
+}
+
   
   const openCreateDialog = () => {
     resetForm()
@@ -216,3 +221,30 @@
   })
   </script>
   
+
+<style scoped>
+.roadmap-table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.roadmap-table-wrapper table {
+  min-width: 1000px;
+  white-space: nowrap;
+}
+
+.action-btn-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.roadmap-table-wrapper td,
+.roadmap-table-wrapper th {
+  white-space: nowrap;     /* force one-line */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+</style>

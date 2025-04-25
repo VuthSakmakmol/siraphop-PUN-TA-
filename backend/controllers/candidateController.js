@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
-const Candidate = require('../models/Candidate');
 const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
+const Candidate = require('../models/Candidate')
+
 
 // ✅ Create Candidate
 exports.createCandidate = async (req, res) => {
@@ -161,6 +162,7 @@ exports.updateCandidate = async (req, res) => {
   }
 };
 
+
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
 
@@ -254,12 +256,12 @@ exports.updateCandidateProgress = async (req, res) => {
     await job.save();
 
     return res.status(200).json({ message: `✅ Candidate moved to ${newStage}`, candidate });
-
   } catch (err) {
     console.error('❌ Progress update error:', err);
     return res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
 
 
 
