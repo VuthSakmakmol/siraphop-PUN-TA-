@@ -1,6 +1,40 @@
 <template>
   <v-container>
-    <!-- Recruitment Pipeline Chart Only -->
+    <!-- Tiny Filters (Auto Apply) -->
+    <v-row dense class="mb-2">
+      <v-col cols="12" md="5">
+        <v-select
+          v-model="filterView"
+          :items="['Month', 'Quarter', 'Year']"
+          label="View By"
+          density="compact"
+          hide-details
+          variant="outlined"
+        />
+      </v-col>
+      <v-col cols="12" md="5">
+        <v-select
+          v-model="filterYear"
+          :items="yearOptions"
+          label="Year"
+          density="compact"
+          hide-details
+          variant="outlined"
+        />
+      </v-col>
+      <v-col cols="12" md="5">
+        <v-select
+          v-model="filterType"
+          :items="['White Collar', 'Blue Collar']"
+          label="Type"
+          density="compact"
+          hide-details
+          variant="outlined"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Recruitment Pipeline Chart -->
     <v-row dense>
       <v-col cols="12">
         <v-card class="pa-4" elevation="2">
@@ -13,11 +47,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 
+const filterView = ref('Month')
+const filterYear = ref(new Date().getFullYear())
+const filterType = ref('White Collar')
+const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i)
+
 const pipelineSeries = ref([])
-const pipelineOptions = ref({})
+const pipelineOptions = ref([])
 
 // Stage labels
 const stageOrder = [
@@ -29,7 +68,7 @@ const stageOrder = [
   '1.6 Onboard'
 ]
 
-// Colors for stages
+// Colors for each stage
 const colorMap = [
   '#42a5f5', // Application
   '#66bb6a', // ManagerReview
@@ -42,7 +81,14 @@ const colorMap = [
 // Fetch Report Data
 const fetchReport = async () => {
   try {
-    const res = await axios.get('/api/report')
+    const res = await axios.get('/api/report', {
+      params: {
+        view: filterView.value.toLowerCase(),
+        year: filterYear.value,
+        type: filterType.value
+      }
+    })
+
     const { rows } = res.data
 
     const pipelineData = stageOrder.map((label, idx) => {
@@ -64,12 +110,8 @@ const fetchReport = async () => {
 
     pipelineOptions.value = {
       chart: { type: 'bar', stacked: false, toolbar: { show: false } },
-      plotOptions: {
-        bar: { horizontal: true }
-      },
-      xaxis: {
-        categories: pipelineData.map(item => item.x)
-      },
+      plotOptions: { bar: { horizontal: true } },
+      xaxis: { categories: pipelineData.map(item => item.x) },
       colors: pipelineData.map(item => item.color),
       dataLabels: { enabled: true },
       tooltip: {
@@ -84,6 +126,7 @@ const fetchReport = async () => {
 }
 
 onMounted(fetchReport)
+watch([filterView, filterYear, filterType], fetchReport)
 </script>
 
 <style scoped>
