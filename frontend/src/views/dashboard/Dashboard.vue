@@ -35,7 +35,7 @@
             clearable outlined dense
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <!-- <v-col cols="12" md="3">
           <v-select
             v-model="filters.jobRequisitionId"
             :items="jobRequisitions"
@@ -44,7 +44,7 @@
             label="Job ID"
             clearable outlined dense
           />
-        </v-col>
+        </v-col> -->
         <v-col cols="12" md="3">
           <v-menu v-model="startDateMenu" :close-on-content-click="false">
             <template #activator="{ props }">
