@@ -2,7 +2,6 @@
   <v-container>
     <!-- Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">Dashboard</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">Department</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/bluecollar/requisitions')">Job Requisition</v-btn>
       <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">Candidates</v-btn>
@@ -449,6 +448,24 @@ const updateRequisitionDetails = async (jobId) => {
   form.value.jobTitle = job.jobTitle || ''
   form.value.recruiter = job.recruiter || ''
 }
+const resetForm = () => {
+  form.value = {
+    name: '',
+    jobRequisitionId: '',
+    recruiter: '',
+    department: '',
+    jobTitle: '',
+    applicationSource: '',
+    hireDecision: 'Candidate in Process',
+    progress: 'Application',
+    progressDates: { Application: dayjs().tz(tz).format('YYYY-MM-DD') },
+    documents: []
+  }
+  isEditMode.value = false
+  editingCandidateId.value = null
+  showForm.value = false
+}
+
 
 watch(globalSearch, filterCandidates)
 

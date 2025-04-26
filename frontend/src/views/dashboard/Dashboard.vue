@@ -1,7 +1,10 @@
 <template>
   <v-container>
     <v-card class="pa-6" elevation="4">
-      <v-card-title class="text-h6 font-weight-bold">Recruitment Dashboard</v-card-title>
+      <v-card-title class="text-h6 font-weight-bold">
+        Recruitment Dashboard<span v-if="filters.type && filters.type !== 'All'"> - {{ filters.type }}</span>
+      </v-card-title>
+
       <v-divider class="my-4" />
 
       <!-- Filters -->
@@ -9,7 +12,7 @@
         <v-col cols="12" md="3">
           <v-select
             v-model="filters.type"
-            :items="['All', 'White Collar', 'Blue Collar - Sewer', 'Blue Collar - Non-Sewer']"
+            :items="['All', 'White Collar', 'Blue Collar']"
             label="Type"
             outlined dense
           />
@@ -59,7 +62,7 @@
           </v-menu>
         </v-col>
         <v-col cols="12" md="3">
-          <v-btn color="primary" class="mt-1" @click="fetchDashboardStats">Apply Filters</v-btn>
+          <v-btn color="primary" class="mt-1" @click="applyFilters">Apply Filters</v-btn>
         </v-col>
       </v-row>
 
@@ -79,7 +82,7 @@
           <MonthlyApplicationLine :data="stats.monthly || {}" />
         </v-col>
         <v-col cols="12" md="4">
-          <VacancyKPI :data="stats" />
+          <VacancyKPI :data="kpi" :loading="kpiLoading" />
         </v-col>
       </v-row>
     </v-card>
@@ -91,7 +94,7 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
-// Components (✅ Make sure the path matches your `src/components/dashboard/`)
+// Components
 import RecruitmentPipelineChart from '@/components/dashboard/RecruitmentPipelineChart.vue'
 import SourcePie from '@/components/dashboard/SourcePie.vue'
 import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
@@ -108,16 +111,21 @@ const filters = ref({
   end: ''
 })
 
+
 const recruiters = ref([])
 const departments = ref([])
 const jobRequisitions = ref([])
 const stats = ref({})
+const kpi = ref({})
+const kpiLoading = ref(false)
+
+
 const startDateMenu = ref(false)
 const endDateMenu = ref(false)
 
 const formatDate = val => val ? dayjs(val).format('YYYY-MM-DD') : ''
 
-// Load all filters for selects
+// Load filter options
 const fetchFilters = async () => {
   try {
     const [r, d, j] = await Promise.all([
@@ -133,19 +141,42 @@ const fetchFilters = async () => {
   }
 }
 
-// Load full dashboard stats
-const fetchDashboardStats = async () => {
+
+const fetchDashboardKPI = async () => {
   try {
-    const res = await axios.post('/api/dashboard/stats', filters.value)
-    stats.value = res.data
+    kpiLoading.value = true;
+    const res = await axios.get('/api/dashboard/kpis', { params: filters.value })
+    kpi.value = res.data;
   } catch (err) {
-    console.error('❌ Failed to fetch dashboard stats', err)
+    console.error('❌ Fetch KPI error:', err)
+  } finally {
+    kpiLoading.value = false;
   }
 }
 
+
+
+const fetchDashboardStats = async () => {
+  try {
+    const res = await axios.post('/api/dashboard/stats', { ...filters.value })
+    stats.value = res.data
+  } catch (err) {
+    console.error('❌ Fetch stats error:', err)
+  }
+}
+
+
+
+const applyFilters = async () => {
+  await fetchDashboardStats()
+  await fetchDashboardKPI()
+}
+
+
+// Initial load
 onMounted(async () => {
   await fetchFilters()
-  await fetchDashboardStats()
+  await applyFilters()
 })
 </script>
 

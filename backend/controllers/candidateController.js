@@ -162,7 +162,6 @@ exports.updateCandidate = async (req, res) => {
   }
 };
 
-
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
 
@@ -206,17 +205,12 @@ exports.updateCandidateProgress = async (req, res) => {
       });
     }
 
-    // ✅ Fill missing progressDates (auto-fill earlier stages)
+    // ✅ Always update the selected stage's date
     const updatedProgressDates = { ...candidate.progressDates };
-    for (let i = 0; i <= newIndex; i++) {
-      const stageKey = stageOrder[i];
-      if (!updatedProgressDates[stageKey]) {
-        updatedProgressDates[stageKey] = new Date(progressDate);
-      }
-    }
+    updatedProgressDates[newStage] = new Date(progressDate);
     candidate.progressDates = updatedProgressDates;
 
-    // ✅ Update progress field only if going forward
+    // ✅ Update progress field only if moving forward
     if (newIndex > currentIndex) {
       candidate.progress = newStage;
     }

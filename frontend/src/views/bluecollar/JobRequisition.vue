@@ -2,7 +2,6 @@
   <v-container>
     <!-- Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="currentRoute === 'dashboard' ? 'active-tab' : ''" @click="goTo('/bluecollar/dashboard')">Dashboard</v-btn>
       <v-btn :class="currentRoute === 'departments' ? 'active-tab' : ''" @click="goTo('/bluecollar/departments')">Department</v-btn>
       <v-btn :class="currentRoute === 'requisitions' ? 'active-tab' : ''" @click="goTo('/bluecollar/requisitions')">Job Openings</v-btn>
       <v-btn :class="currentRoute === 'candidates' ? 'active-tab' : ''" @click="goTo('/bluecollar/candidates')">Candidates</v-btn>

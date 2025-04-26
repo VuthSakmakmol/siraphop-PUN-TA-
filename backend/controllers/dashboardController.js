@@ -1,24 +1,28 @@
 const Candidate = require('../models/Candidate');
 const JobRequisition = require('../models/JobRequisition');
 
-
-
-// 🔧 Helper: Build Job Match Filter
 const buildJobMatch = (query) => {
   const match = {};
+
   if (query.type && query.type !== 'All') {
     if (query.type === 'White Collar') {
       match.type = 'White Collar';
     } else if (query.type.startsWith('Blue Collar')) {
-      match.type = 'Blue Collar';
-      if (query.type.includes('Sewer')) match.subType = 'Sewer';
-      if (query.type.includes('Non-Sewer')) match.subType = 'Non-Sewer';
+      match.type = 'Blue Collar';  // ✅ No checking Sewer/Non-Sewer
     }
   }
-  if (query.department) match.departmentId = query.department;
-  if (query.jobRequisitionId) match._id = query.jobRequisitionId;
+
+  if (query.department) {
+    match.departmentId = query.department;
+  }
+
+  if (query.jobRequisitionId) {
+    match._id = query.jobRequisitionId;
+  }
+
   return match;
 };
+
 
 
 const buildCandidateMatch = (query) => {
@@ -349,23 +353,16 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-
-// ✅ GET /api/dashboard/kpis
+// 📦 GET /api/dashboard/kpis
 exports.getVacancyKPIs = async (req, res) => {
   try {
-    // Build filter for job type
-    const match = {};
+    const match = {}; // ✅ Build query filter
+
     if (req.query.type && req.query.type !== 'All') {
-      if (req.query.type === 'White Collar') {
-        match.type = 'White Collar';
-      } else if (req.query.type.startsWith('Blue Collar')) {
-        match.type = 'Blue Collar';
-        if (req.query.type.includes('Sewer')) match.subType = 'Sewer';
-        if (req.query.type.includes('Non-Sewer')) match.subType = 'Non-Sewer';
-      }
+      match.type = req.query.type; // "White Collar" or "Blue Collar"
     }
 
-    // Fetch all matching job requisitions
+    // 🔥 Fetch matching job requisitions
     const jobs = await JobRequisition.find(match);
 
     const totalRequisitions = jobs.length;
@@ -373,10 +370,9 @@ exports.getVacancyKPIs = async (req, res) => {
     const activeVacancies = jobs.filter(j => j.status === 'Vacant').length;
 
     const hiringCost = jobs.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
-    
-    const onboarded = jobRequisitions.reduce((sum, j) => sum + (j.onboardCount || 0), 0);
+    const onboarded = jobs.reduce((sum, j) => sum + (j.onboardCount || 0), 0);
 
-    const costPerHire = onboarded > 0 ? Number((totalCost / onboarded).toFixed(2)) : '-';
+    const costPerHire = onboarded > 0 ? Number((hiringCost / onboarded).toFixed(2)) : 0;
     const fillRate = totalRequisitions > 0 ? ((filled / totalRequisitions) * 100).toFixed(1) : '0';
 
     res.json({
