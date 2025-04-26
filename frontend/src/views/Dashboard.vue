@@ -92,7 +92,7 @@
 
       <v-row dense class="flex-wrap">
         <v-col cols="12" md="4">
-          <PipelineChart :data="stats.pipeline || {}" />
+          <RecruitmentPipelineChart :data="stats.pipeline || {}" />
         </v-col>
 
         <v-col cols="12" md="4">

@@ -100,31 +100,33 @@ exports.getReport = async (req, res) => {
       }
     }
 
-    // Source of Application
+    // Application Source
     const sourceCounts = {};
+    const sourceApplications = initialArray();
     for (const s of sources) sourceCounts[s] = initialArray();
-    const totalPerPeriod = initialArray();
 
     for (const c of filtered) {
       const m = dayjs(c.progressDates?.Application).month();
+      const idx = getIndex(view, m);
       const rawSource = c.applicationSource?.trim();
-      if (!rawSource) continue;
 
-      for (const definedSource of sources) {
-        if (rawSource.toLowerCase().includes(definedSource.toLowerCase())) {
-          const idx = getIndex(view, m);
-          sourceCounts[definedSource][idx]++;
-          totalPerPeriod[idx]++;
-          break;
+      if (rawSource) {
+        for (const definedSource of sources) {
+          if (rawSource.toLowerCase().includes(definedSource.toLowerCase())) {
+            sourceCounts[definedSource][idx]++;
+            sourceApplications[idx]++;
+            break;
+          }
         }
       }
     }
 
     const sourcePercent = {};
     for (const s of sources) {
-      sourcePercent[s] = sourceCounts[s].map((val, i) =>
-        totalPerPeriod[i] > 0 ? `${Math.round((val / totalPerPeriod[i]) * 100)}%` : '0%'
-      );
+      sourcePercent[s] = sourceCounts[s].map((count, i) => {
+        const total = sourceApplications[i] || 1; // prevent divide by zero
+        return `${Math.round((count / total) * 100)}%`;
+      });
     }
 
     // Vacancy Stats
@@ -157,25 +159,19 @@ exports.getReport = async (req, res) => {
         const totalActual = months.reduce((sum, m) => sum + (roadmapMap[m]?.actualHC || 0), 0);
         const totalTarget = months.reduce((sum, m) => sum + (roadmapMap[m]?.hiringTargetHC || 0), 0);
         stats.activeVacant[i] = totalRoadmap - totalActual;
-        stats.fillRate[i] = totalTarget > 0
-          ? `${Math.round((pipeline.Hired[i] / totalTarget) * 100)}%`
-          : '0%';
+        stats.fillRate[i] = totalTarget > 0 ? `${Math.round((pipeline.Hired[i] / totalTarget) * 100)}%` : '0%';
       } else if (view === 'quarter') {
         const qMonths = getQuarterMonths(i);
         const roadmapSum = qMonths.reduce((sum, m) => sum + (roadmapMap[getMonthName(m)]?.roadmapHC || 0), 0);
         const actualSum = qMonths.reduce((sum, m) => sum + (roadmapMap[getMonthName(m)]?.actualHC || 0), 0);
         const targetSum = qMonths.reduce((sum, m) => sum + (roadmapMap[getMonthName(m)]?.hiringTargetHC || 0), 0);
         stats.activeVacant[i] = roadmapSum - actualSum;
-        stats.fillRate[i] = targetSum > 0
-          ? `${Math.round((pipeline.Hired[i] / targetSum) * 100)}%`
-          : '0%';
+        stats.fillRate[i] = targetSum > 0 ? `${Math.round((pipeline.Hired[i] / targetSum) * 100)}%` : '0%';
       } else {
         const monthName = months[i];
         stats.activeVacant[i] = roadmapMap[monthName]?.roadmapHC - roadmapMap[monthName]?.actualHC;
         const target = roadmapMap[monthName]?.hiringTargetHC;
-        stats.fillRate[i] = target > 0
-          ? `${Math.round((pipeline.Hired[i] / target) * 100)}%`
-          : '0%';
+        stats.fillRate[i] = target > 0 ? `${Math.round((pipeline.Hired[i] / target) * 100)}%` : '0%';
       }
     }
 

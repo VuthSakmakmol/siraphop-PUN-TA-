@@ -1,126 +1,94 @@
 <template>
-  <v-card class="pa-4" elevation="3">
-    <v-card-title class="text-h6 font-weight-bold">Recruitment Pipeline</v-card-title>
-    <v-divider class="mb-3" />
-    <div class="chart-container">
-      <canvas ref="chartCanvas"></canvas>
-    </div>
-  </v-card>
+  <v-container>
+    <!-- Recruitment Pipeline Chart Only -->
+    <v-row dense>
+      <v-col cols="12">
+        <v-card class="pa-4" elevation="2">
+          <h3 class="text-h6 font-weight-bold mb-2">Recruitment Pipeline Overview</h3>
+          <apexchart type="bar" height="400" :options="pipelineOptions" :series="pipelineSeries" />
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import {
-  Chart,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend
-} from 'chart.js'
-import ChartDataLabels from 'chartjs-plugin-datalabels'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
+const pipelineSeries = ref([])
+const pipelineOptions = ref({})
 
-const props = defineProps({
-  data: {
-    type: Object,
-    default: () => ({
-      Application: 0,
-      ManagerReview: 0,
-      Interview: 0,
-      JobOffer: 0,
-      Hired: 0,
-      Onboard: 0
-    })
-  }
-})
-
-const chartCanvas = ref(null)
-let chartInstance = null
-
-const stageLabels = {
-  Application: 'Received Application',
-  ManagerReview: 'Sent to Manager',
-  Interview: 'Interviews',
-  JobOffer: 'Job Offer',
-  Hired: 'Hired',
-  Onboard: 'Onboard'
-}
-
-const stageColors = [
-  '#66bb6a', // Application
-  '#42a5f5', // ManagerReview
-  '#26c6da', // Interview
-  '#ffa726', // JobOffer
-  '#ef5350', // Hired
-  '#ab47bc'  // Onboard
+// Stage labels
+const stageOrder = [
+  '1.1 Received Application',
+  '1.2 Sent to Manager',
+  '1.3 Interviews',
+  '1.4 Job Offer',
+  '1.5 Hired',
+  '1.6 Onboard'
 ]
 
-const renderChart = () => {
-  if (chartInstance) chartInstance.destroy()
+// Colors for stages
+const colorMap = [
+  '#42a5f5', // Application
+  '#66bb6a', // ManagerReview
+  '#ffa726', // Interview
+  '#ab47bc', // JobOffer
+  '#26c6da', // Hired
+  '#ef5350'  // Onboard
+]
 
-  const labels = Object.keys(props.data).map(key => stageLabels[key] || key)
-  const values = Object.values(props.data)
+// Fetch Report Data
+const fetchReport = async () => {
+  try {
+    const res = await axios.get('/api/report')
+    const { rows } = res.data
 
-  chartInstance = new Chart(chartCanvas.value, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: stageColors,
-        datalabels: {
-          anchor: 'center',
-          align: 'center',
-          color: '#fff',
-          font: {
-            weight: 'bold',
-            size: 14
-          }
-        }
-      }]
-    },
-    options: {
-      indexAxis: 'y', // Horizontal bars
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.raw} candidate(s)`
-          }
-        },
-        datalabels: {
-          display: true,
-          anchor: 'center',
-          align: 'center',
-          formatter: value => value
-        }
+    const pipelineData = stageOrder.map((label, idx) => {
+      const row = rows.find(r => r.label === label)
+      const value = row ? row.values.reduce((a, b) => a + b, 0) : 0
+      return {
+        x: label.replace(/^1\.\d+\s/, ''), // Remove "1.1 " etc.
+        y: value,
+        color: colorMap[idx]
+      }
+    })
+
+    pipelineSeries.value = [{
+      data: pipelineData.map(item => ({
+        x: item.x,
+        y: item.y
+      }))
+    }]
+
+    pipelineOptions.value = {
+      chart: { type: 'bar', stacked: false, toolbar: { show: false } },
+      plotOptions: {
+        bar: { horizontal: true }
       },
-      scales: {
-        x: {
-          beginAtZero: true,
-          ticks: {
-            precision: 0,
-            stepSize: 1
-          },
-          suggestedMax: Math.max(...values, 5)
+      xaxis: {
+        categories: pipelineData.map(item => item.x)
+      },
+      colors: pipelineData.map(item => item.color),
+      dataLabels: { enabled: true },
+      tooltip: {
+        y: {
+          formatter: (val) => `${val} Candidates`
         }
       }
-    },
-    plugins: [ChartDataLabels]
-  })
+    }
+  } catch (err) {
+    console.error('❌ Failed to load pipeline chart:', err)
+  }
 }
 
-onMounted(renderChart)
-watch(() => props.data, renderChart, { deep: true })
+onMounted(fetchReport)
 </script>
 
 <style scoped>
-.chart-container {
-  height: 340px;
-  position: relative;
+h3 {
+  font-weight: bold;
+  margin-bottom: 12px;
 }
 </style>

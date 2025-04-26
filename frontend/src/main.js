@@ -4,8 +4,13 @@ import router from './router'
 import vuetify from './plugins/vuetify'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
+import VueApexCharts from 'vue3-apexcharts'
 
-createApp(App)
-  .use(router)
-  .use(vuetify)
-  .mount('#app')
+// ✅ Correct order
+const app = createApp(App)
+
+app.use(router)
+app.use(vuetify)
+app.component('apexchart', VueApexCharts)
+
+app.mount('#app')
