@@ -141,15 +141,34 @@ exports.updateJobRequisition = async (req, res) => {
   }
 };
 
-// ✅ Delete requisition
 exports.deleteJobRequisition = async (req, res) => {
   try {
-    await JobRequisition.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: 'Deleted successfully' });
+    const { id } = req.params;
+
+    // ✅ 1. Check if any Candidate is linked to this Job Requisition
+    const candidateCount = await Candidate.countDocuments({ jobRequisitionId: id });
+
+    if (candidateCount > 0) {
+      return res.status(400).json({
+        message: `❌ Cannot delete. There are still ${candidateCount} candidate(s) applying for this Job Opening. Please remove or reassign them first.`
+      });
+    }
+
+    // ✅ 2. If safe, proceed to delete
+    const job = await JobRequisition.findByIdAndDelete(id);
+
+    if (!job) {
+      return res.status(404).json({ message: '❌ Job Requisition not found' });
+    }
+
+    res.json({ message: '✅ Job Requisition deleted successfully' });
+
   } catch (err) {
-    res.status(500).json({ message: 'Failed to delete job requisition' });
+    console.error('❌ Error deleting Job Requisition:', err);
+    res.status(500).json({ message: '❌ Server Error', error: err.message });
   }
 };
+
 
 // ✅ Get job titles & recruiters for department
 exports.getJobTitlesAndRecruiters = async (req, res) => {

@@ -1,6 +1,6 @@
 <template>
   <v-card class="pa-4" elevation="3">
-    <v-card-title class="text-h6">Monthly Applications</v-card-title>
+    <v-card-title class="text-h6">Number of Applications by Month</v-card-title>
     <v-divider class="mb-3" />
     <div style="height: 220px">
       <canvas ref="lineChart" />

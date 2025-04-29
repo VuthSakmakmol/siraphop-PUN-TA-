@@ -2,10 +2,20 @@
   <v-container>
     <!-- Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="currentRoute === 'departments' ? 'active-tab' : ''" @click="goTo('/bluecollar/departments')">Department</v-btn>
-      <v-btn :class="currentRoute === 'requisitions' ? 'active-tab' : ''" @click="goTo('/bluecollar/requisitions')">Job Openings</v-btn>
-      <v-btn :class="currentRoute === 'candidates' ? 'active-tab' : ''" @click="goTo('/bluecollar/candidates')">Candidates</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
+        Dashboard
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">
+        Department
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/bluecollar/requisitions')">
+        Job Openings
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">
+        Candidates
+      </v-btn>
     </div>
+
 
     <v-card class="pa-5" elevation="5">
       <!-- Toggle Form -->
@@ -420,7 +430,6 @@ const editRequisition = (job) => {
   fetchDepartments().then(onDepartmentChange)
   showForm.value = true
 }
-
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
     title: 'Delete Job Requisition?',
@@ -432,7 +441,10 @@ const deleteRequisition = async (id) => {
     allowEnterKey: true,
     confirmButtonColor: '#e53935'
   })
-  if (confirm.isConfirmed) {
+
+  if (!confirm.isConfirmed) return
+
+  try {
     await axios.delete(`/api/job-requisitions/${id}`)
     await Swal.fire({
       icon: 'success',
@@ -441,8 +453,20 @@ const deleteRequisition = async (id) => {
       allowEnterKey: true
     })
     fetchRequisitions()
+  } catch (err) {
+    const msg = err?.response?.data?.message || 'Failed to delete requisition'
+    const linkPath = '/bluecollar/candidates'
+
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Cannot Delete',
+      html: `${msg}<br><br><a href="${linkPath}" style="color:#1976d2; text-decoration:underline;">➡ Manage Candidates</a>`,
+      allowEnterKey: true,
+      confirmButtonColor: '#1976d2'
+    })
   }
 }
+
 
 const resetForm = () => {
   form.value = {

@@ -436,8 +436,6 @@ const editRequisition = (job) => {
   showForm.value = true
   onDepartmentChange()
 }
-
-// 🗑️ Delete
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
     title: '🗑️ Confirm Deletion',
@@ -448,14 +446,21 @@ const deleteRequisition = async (id) => {
     cancelButtonText: 'Cancel',
     allowEnterKey: true,
     confirmButtonColor: '#e53935'
-  })
+  });
 
-  if (confirm.isConfirmed) {
-    await axios.delete(`/api/job-requisitions/${id}`)
-    await alertBox('success', '✅ Deleted', 'Job requisition has been removed.')
-    fetchRequisitions()
+  if (!confirm.isConfirmed) return;
+
+  try {
+    await axios.delete(`/api/job-requisitions/${id}`);
+    await alertBox('success', '✅ Deleted', 'Job requisition has been removed.');
+    fetchRequisitions();
+  } catch (err) {
+    console.error('❌ Deletion error:', err);
+    const msg = err?.response?.data?.message || '❌ Failed to delete job requisition';
+    await alertBox('error', '❌ Cannot Delete', msg);
   }
 }
+
 
 // 🔄 Reset
 const resetForm = () => {

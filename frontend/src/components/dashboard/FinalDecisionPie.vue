@@ -1,7 +1,7 @@
 <template>
-  <v-card class="pa-4" elevation="3">
-    <v-card-title class="text-h6 font-weight-bold">Final Hiring Decision</v-card-title>
-    <v-divider class="mb-3" />
+  <v-card class="pa-4" elevation="3" style="height: 500px;">
+    <v-card-title class="text-h6 font-weight-bold mb-2">Final Decision</v-card-title>
+    <v-divider class="mb-4" />
     <div class="chart-container">
       <canvas ref="chartCanvas"></canvas>
     </div>
@@ -59,9 +59,16 @@ const renderChart = () => {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            font: {
+              size: 12
+            }
+          }
         },
         datalabels: {
           color: '#fff',
@@ -69,11 +76,13 @@ const renderChart = () => {
           formatter: (val, ctx) => {
             const data = ctx.chart.data.datasets[0].data
             const total = data.reduce((sum, val) => sum + val, 0)
-            const percent = total > 0 ? ((val / total) * 100).toFixed(1) : 0
-            return `${percent}%`
+            const percent = total > 0 ? ((val / total) * 100) : 0
+            if (percent === 0) return '' // ✅ Hide if 0%
+            return `${percent.toFixed(1)}%`
           }
         }
       }
+
     },
     plugins: [ChartDataLabels]
   })
@@ -85,7 +94,7 @@ watch(() => props.data, renderChart, { deep: true })
 
 <style scoped>
 .chart-container {
-  height: 320px;
+  height: 400px; /* ✅ make it large like your application source */
   position: relative;
 }
 </style>

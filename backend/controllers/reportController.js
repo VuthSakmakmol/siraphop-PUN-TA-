@@ -63,7 +63,7 @@ exports.getReport = async (req, res) => {
       const applicationQuarter = Math.floor(applicationMonth / 3) + 1;
 
       const matchesYear = applicationYear === +year;
-      const matchesType = !type || (c.jobRequisitionId && c.jobRequisitionId.type === type);
+      const matchesType = (type === 'All') || (c.jobRequisitionId && c.jobRequisitionId.type === type);
 
       if (!matchesYear || !matchesType) return false;
 
@@ -139,12 +139,13 @@ exports.getReport = async (req, res) => {
     const hireDates = {};
     for (const c of filtered) {
       const applied = c.progressDates?.Application;
-      const hired = c.progressDates?.Hired;
-      if (applied && hired) {
-        const m = dayjs(hired).month();
+      const onboard = c.progressDates?.Onboard; // ✅ Change here (use Onboard instead of Hired)
+
+      if (applied && onboard) {
+        const m = dayjs(onboard).month();
         const idx = getIndex(view, m);
         hireDates[idx] = hireDates[idx] || [];
-        const days = dayjs(hired).diff(dayjs(applied), 'day');
+        const days = dayjs(onboard).diff(dayjs(applied), 'day'); // ✅ Calculate days to Onboard
         hireDates[idx].push(days);
       }
     }

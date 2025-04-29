@@ -1,6 +1,6 @@
 <template>
     <v-card class="pa-4" elevation="2">
-      <h3 class="text-subtitle-1 mb-4">Recruitment Pipeline</h3>
+      <h3 class="text-subtitle-1 mb-4">Recruitment Pipelineaa</h3>
       <canvas ref="chartRef" height="180" />
     </v-card>
   </template>

@@ -2,9 +2,18 @@
   <v-container>
     <!-- Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">Department</v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/bluecollar/requisitions')">Job Requisition</v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">Candidates</v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
+        Dashboard
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">
+        Department
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/bluecollar/requisitions')">
+        Job Openings
+      </v-btn>
+      <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">
+        Candidates
+      </v-btn>
     </div>
 
     <v-card class="pa-5 mb-4" elevation="5">

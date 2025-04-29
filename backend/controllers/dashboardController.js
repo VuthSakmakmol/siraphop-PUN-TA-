@@ -1,6 +1,7 @@
 const Candidate = require('../models/Candidate');
 const JobRequisition = require('../models/JobRequisition');
 
+
 const buildJobMatch = (query) => {
   const match = {};
 
@@ -8,7 +9,7 @@ const buildJobMatch = (query) => {
     if (query.type === 'White Collar') {
       match.type = 'White Collar';
     } else if (query.type.startsWith('Blue Collar')) {
-      match.type = 'Blue Collar';  // ✅ No checking Sewer/Non-Sewer
+      match.type = 'Blue Collar'; // ✅ No need to separate Sewer/Non-Sewer
     }
   }
 
@@ -23,12 +24,16 @@ const buildJobMatch = (query) => {
   return match;
 };
 
-
-
 const buildCandidateMatch = (query) => {
   const match = {};
-  if (query.recruiter) match.recruiter = query.recruiter;
-  if (query.jobRequisitionId) match.jobRequisitionId = query.jobRequisitionId;
+
+  if (query.recruiter) {
+    match.recruiter = query.recruiter;
+  }
+
+  if (query.jobRequisitionId) {
+    match.jobRequisitionId = query.jobRequisitionId;
+  }
 
   if (query.start || query.end) {
     match['progressDates.Application'] = {};
@@ -39,7 +44,7 @@ const buildCandidateMatch = (query) => {
   return match;
 };
 
-
+// ✅ Full and correct getDashboardStats
 exports.getDashboardStats = async (req, res) => {
   try {
     const jobMatch = buildJobMatch(req.body);
@@ -48,6 +53,7 @@ exports.getDashboardStats = async (req, res) => {
     const jobRequisitions = await JobRequisition.find(jobMatch);
     const jobIds = jobRequisitions.map(j => j._id);
     candidateMatch.jobRequisitionId = { $in: jobIds };
+
     const candidates = await Candidate.find(candidateMatch);
 
     const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
@@ -64,16 +70,31 @@ exports.getDashboardStats = async (req, res) => {
     let totalDaysToHire = 0;
     let onboardedCount = 0;
 
+    // Loop candidates
     candidates.forEach(c => {
       const pd = c.progressDates || {};
       const appDate = new Date(pd.Application);
+
+      // Monthly applications
       const key = `${appDate.getFullYear()}-${String(appDate.getMonth() + 1).padStart(2, '0')}`;
       monthly[key] = (monthly[key] || 0) + 1;
 
-      source[c.applicationSource] = (source[c.applicationSource] || 0) + 1;
-      if (decision[c.hireDecision] !== undefined) decision[c.hireDecision]++;
-      if (pipeline[c.progress] !== undefined) pipeline[c.progress]++;
+      // Source
+      if (c.applicationSource) {
+        source[c.applicationSource] = (source[c.applicationSource] || 0) + 1;
+      }
 
+      // Hire Decision
+      if (decision[c.hireDecision] !== undefined) {
+        decision[c.hireDecision]++;
+      }
+
+      // Recruitment stage progress
+      if (pipeline[c.progress] !== undefined) {
+        pipeline[c.progress]++;
+      }
+
+      // Calculate Days from Application ➔ Onboard
       let days = 0;
       let isComplete = true;
       for (let i = 1; i < stages.length; i++) {
@@ -92,19 +113,21 @@ exports.getDashboardStats = async (req, res) => {
       }
     });
 
-    const totalCost = jobRequisitions.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
+    // Global Dashboard KPI
+    const totalHiringCost = jobRequisitions.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
     const onboarded = jobRequisitions.reduce((sum, j) => sum + (j.onboardCount || 0), 0);
     const filled = jobRequisitions.filter(j => j.status === 'Filled').length;
     const activeVacancies = jobRequisitions.filter(j => j.status === 'Vacant').length;
-    const costPerHire = onboarded > 0 ? Number((totalCost / onboarded).toFixed(2)) : null;
-    const fillRate = jobRequisitions.length ? ((filled / jobRequisitions.length) * 100).toFixed(1) : 0;
-    const avgDaysToHire = onboardedCount ? (totalDaysToHire / onboardedCount).toFixed(1) : '-';
+
+    const costPerHire = onboarded > 0 ? (totalHiringCost / onboarded).toFixed(2) : null;
+    const fillRate = jobRequisitions.length ? ((filled / jobRequisitions.length) * 100).toFixed(1) : '0';
+    const avgDaysToHire = onboardedCount > 0 ? (totalDaysToHire / onboardedCount).toFixed(1) : '0';
 
     res.json({
       totalRequisitions: jobRequisitions.length,
       filledPositions: filled,
       activeVacancies,
-      hiringCost: totalCost,
+      hiringCost: totalHiringCost,
       costPerHire,
       avgDaysToHire,
       fillRate,
@@ -124,34 +147,49 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 
-
 // ✅ GET /api/dashboard/summary
 exports.getDashboardSummary = async (req, res) => {
   try {
     const jobMatch = buildJobMatch(req.query);
     const candidateMatch = buildCandidateMatch(req.query);
 
+    // 1. Fetch all jobs based on filter
     const jobs = await JobRequisition.find(jobMatch);
+
+    if (!jobs.length) {
+      return res.json({
+        hiringCost: 0,
+        costPerHire: '-',
+        activeVacancies: 0,
+        fillRate: 0
+      });
+    }
+
     const jobIds = jobs.map(j => j._id);
     candidateMatch.jobRequisitionId = { $in: jobIds };
 
+    // 2. Fetch all candidates applying to these jobs
     const candidates = await Candidate.find(candidateMatch);
 
+    // 3. Calculate
     const hired = candidates.filter(c => c.hireDecision === 'Hired').length;
-    const cost = jobs.reduce((acc, j) => acc + (j.hiringCost || 0), 0);
-    const costPerHire = hired ? (cost / hired).toFixed(2) : '-';
+    const totalHiringCost = jobs.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
+    const costPerHire = hired > 0 ? (totalHiringCost / hired).toFixed(2) : '-';
 
     const filled = jobs.filter(j => j.status === 'Filled').length;
     const activeVacancies = jobs.filter(j => j.status === 'Vacant').length;
     const fillRate = jobs.length ? ((filled / jobs.length) * 100).toFixed(1) : 0;
 
+    // ✅ Send Response
     res.json({
-      hiringCost: cost,
+      hiringCost: totalHiringCost,
       costPerHire,
       activeVacancies,
       fillRate
     });
+
   } catch (err) {
+    console.error('❌ Error fetching dashboard summary:', err);
     res.status(500).json({ message: 'Failed to fetch dashboard summary', error: err.message });
   }
 };
@@ -353,36 +391,81 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
-// 📦 GET /api/dashboard/kpis
+
 exports.getVacancyKPIs = async (req, res) => {
   try {
-    const match = {}; // ✅ Build query filter
+    const { type = 'All', recruiter, start, end } = req.query;
 
-    if (req.query.type && req.query.type !== 'All') {
-      match.type = req.query.type; // "White Collar" or "Blue Collar"
+    const jobMatch = {};
+
+    if (type && type !== 'All') {
+      jobMatch.type = type;
+    }
+    if (recruiter) {
+      jobMatch.recruiter = recruiter;
+    }
+    if (start && end) {
+      jobMatch.openingDate = { $gte: new Date(start), $lte: new Date(end) };
+    } else if (start) {
+      jobMatch.openingDate = { $gte: new Date(start) };
+    } else if (end) {
+      jobMatch.openingDate = { $lte: new Date(end) };
     }
 
-    // 🔥 Fetch matching job requisitions
-    const jobs = await JobRequisition.find(match);
+    const jobs = await JobRequisition.find(jobMatch);
+    const jobIds = jobs.map(j => j._id.toString());
 
     const totalRequisitions = jobs.length;
-    const filled = jobs.filter(j => j.status === 'Filled').length;
     const activeVacancies = jobs.filter(j => j.status === 'Vacant').length;
+    const totalHiringCost = jobs.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
 
-    const hiringCost = jobs.reduce((sum, j) => sum + (j.hiringCost || 0), 0);
-    const onboarded = jobs.reduce((sum, j) => sum + (j.onboardCount || 0), 0);
+    const candidateMatch = {
+      jobRequisitionId: { $in: jobIds }
+    };
+    if (type && type !== 'All') {
+      candidateMatch.type = type;
+    }
+    if (recruiter) {
+      candidateMatch.recruiter = recruiter;
+    }
 
-    const costPerHire = onboarded > 0 ? Number((hiringCost / onboarded).toFixed(2)) : 0;
-    const fillRate = totalRequisitions > 0 ? ((filled / totalRequisitions) * 100).toFixed(1) : '0';
+    const candidates = await Candidate.find(candidateMatch);
+
+    const onboardedCandidates = candidates.filter(c => c.progress === 'Onboard');
+    const filled = onboardedCandidates.length;
+
+    const costPerHire = filled > 0 ? Number((totalHiringCost / filled).toFixed(2)) : 0;
+
+    const onboardDurations = [];
+    for (const c of onboardedCandidates) {
+      const appDate = c.progressDates?.Application;
+      const onboardDate = c.progressDates?.Onboard;
+      if (appDate && onboardDate) {
+        const startDate = new Date(appDate);
+        const endDate = new Date(onboardDate);
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        if (days >= 0) onboardDurations.push(days);
+      }
+    }
+
+    const averageDaysToHire = onboardDurations.length
+      ? (onboardDurations.reduce((a, b) => a + b, 0) / onboardDurations.length).toFixed(1)
+      : '0'; // ✅ Default to '0' if no onboarded
+
+    const fillRate = totalRequisitions > 0
+      ? ((filled / totalRequisitions) * 100).toFixed(1)
+      : '0';
 
     res.json({
       totalRequisitions,
       filled,
       activeVacancies,
-      hiringCost,
+      hiringCost: totalHiringCost,
       costPerHire,
-      fillRate
+      fillRate,
+      averageDaysToHire
     });
+
   } catch (err) {
     console.error('❌ Error in getVacancyKPIs:', err);
     res.status(500).json({ message: 'Failed to fetch KPI data', error: err.message });

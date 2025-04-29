@@ -2,10 +2,20 @@
     <v-container>
       <!-- Navbar -->
       <div class="whitecollar-nav">
-        <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">Department</v-btn>
-        <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">Job Opening</v-btn>
-        <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">Candidates</v-btn>
+        <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
+          Dashboard
+        </v-btn>
+        <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">
+          Department
+        </v-btn>
+        <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">
+          Job Openings
+        </v-btn>
+        <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">
+          Candidates
+        </v-btn>
       </div>
+
 
       <v-card class="pa-5 mb-4" elevation="5"
         >
@@ -259,7 +269,7 @@ const stageDisplayNames = {
   Onboard: 'Onboard'
 }
 
-const sources = ['Agency','Banner / Job Announment Board','Brochure','FIF','Facebook','HR Call','Job Portal','LinkedIn','Telegram','Other']
+const sources = ['Agency','Banner / Job Announcement Board','Brochure','FIF','Facebook','HR Call','Job Portal','LinkedIn','Telegram','Other']
 const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
 const currentRoute = computed(() => route.path.split('/')[2])
 const goTo = path => router.push(path)

@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card class="pa-6 elevation-4">
-      <v-card-title class="text-h6 font-weight-bold">Recruitment Dashboard</v-card-title>
+      <v-card-title class="text-h6 font-weight-bold">Recruitment Manager Dashboard</v-card-title>
       <v-divider class="my-4" />
 
       <!-- Filters Section -->

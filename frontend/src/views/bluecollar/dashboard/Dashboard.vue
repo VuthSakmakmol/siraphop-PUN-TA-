@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card class="pa-5 mb-4">
-      <h2 class="text-h6 mb-4">Recruitment Dashboard</h2>
+      <h2 class="text-h6 mb-4">Recruitment Manager Dashboard</h2>
       <v-row dense>
         <v-col cols="12" md="3">
           <v-select

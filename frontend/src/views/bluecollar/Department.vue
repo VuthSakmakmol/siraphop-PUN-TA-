@@ -9,117 +9,135 @@
     </div>
 
     <v-card class="pa-5" elevation="5">
-      <!-- Title & Recruiter Button -->
-      <v-card-title>
-        <span class="text-h6">Blue Collar Departments</span>
-        <v-spacer />
-        <v-tooltip location="bottom">
-          <template #activator="{ props }">
-            <v-btn icon size="small" v-bind="props" color="indigo" @click="toggleRecruiterSection">
-              <v-badge :content="globalRecruiters.length" color="red" offset-x="4" offset-y="4">
-                <v-icon size="22">mdi-account-group</v-icon>
-              </v-badge>
-            </v-btn>
-          </template>
-          <span>{{ showRecruiterSection ? 'Hide Recruiters' : 'Manage Recruiters' }}</span>
-        </v-tooltip>
-      </v-card-title>
+      <span class="text-h6">Blue Collar Departments</span>
+  <!-- Title & Manage Recruiter -->
+  <v-card-title class = " align-center">
+    
+    <v-spacer />
+    <div class="d-flex align-center" style="gap: 8px;">
+      <v-btn icon size="small" color="indigo" @click="toggleRecruiterSection">
+        <v-badge :content="globalRecruiters.length" color="red" offset-x="4" offset-y="4">
+          <v-icon size="22">mdi-account-group</v-icon>
+        </v-badge>
+      </v-btn>
+      <span
+        @click="toggleRecruiterSection"
+        style="cursor: pointer; color: #1976d2; font-size: 14px; font-weight: 500;"
+      >
+        Manage Recruiters
+      </span>
+    </div>
+  </v-card-title>
 
-      <!-- Recruiter Section -->
-      <v-expand-transition>
-        <v-sheet v-if="showRecruiterSection" class="pa-4" elevation="2" rounded>
-          <v-row class="mb-2">
-            <v-col cols="12" md="6">
-              <v-text-field v-model="globalRecruiter" label="Add Global Recruiter" prepend-icon="mdi-account" />
-            </v-col>
-            <v-col cols="12" md="2">
-              <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add</v-btn>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="12">
-              <v-chip-group column>
-                <v-chip v-for="(r, i) in globalRecruiters" :key="r._id" class="ma-1" color="indigo" text-color="white" size="small" @dblclick="showEditDeleteOptions(r)">
-                  {{ r.name }}
-                </v-chip>
-              </v-chip-group>
-              <p class="text-caption text-grey mt-1">💡 Double-click a chip to edit or delete recruiter</p>
-            </v-col>
-          </v-row>
-        </v-sheet>
-      </v-expand-transition>
-
-      <!-- Sewer / Non-Sewer Buttons -->
-      <v-row class="mt-4">
+  <!-- Recruiter Section -->
+  <v-expand-transition>
+    <v-sheet v-if="showRecruiterSection" class="pa-4" elevation="2" rounded>
+      <v-row class="mb-2">
         <v-col cols="12" md="6">
-          <v-btn block color="teal" @click="activeSubType = activeSubType === 'Sewer' ? null : 'Sewer'">
-            {{ activeSubType === 'Sewer' ? 'Close Sewer Form' : '➕ Add Sewer Department' }}
-          </v-btn>
+          <v-text-field
+            v-model="globalRecruiter"
+            label="Add Global Recruiter"
+            prepend-icon="mdi-account"
+          />
         </v-col>
-        <v-col cols="12" md="6">
-          <v-btn block color="purple" @click="activeSubType = activeSubType === 'Non-Sewer' ? null : 'Non-Sewer'">
-            {{ activeSubType === 'Non-Sewer' ? 'Close Non-Sewer Form' : '➕ Add Non-Sewer Department' }}
-          </v-btn>
+        <v-col cols="12" md="2">
+          <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add New Recruiter</v-btn>
         </v-col>
       </v-row>
+      <v-row>
+        <v-col cols="12">
+          <v-chip-group column>
+            <v-chip
+              v-for="(r, i) in globalRecruiters"
+              :key="r._id"
+              class="ma-1"
+              color="indigo"
+              text-color="white"
+              size="small"
+              @dblclick="showEditDeleteOptions(r)"
+            >
+              {{ r.name }}
+            </v-chip>
+          </v-chip-group>
+          <p class="text-caption text-grey mt-1">
+            💡 Double-click a chip to edit or delete recruiter
+          </p>
+        </v-col>
+      </v-row>
+    </v-sheet>
+  </v-expand-transition>
 
-      <!-- Dynamic Department Form -->
-      <v-expand-transition>
-        <v-form v-if="activeSubType" @submit.prevent="handleSubmit" class="mt-3">
-          <v-sheet class="pa-4" elevation="2" rounded>
-            <v-row>
-              <v-col cols="12" md="4">
-                <v-text-field v-model="form.departmentId" label="Department ID" required />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field v-model="form.name" label="Department Name" required />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-btn color="success" type="submit" :loading="loading" class="mt-2">
-                  {{ form._id ? 'Update' : `Create ${activeSubType}` }}
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-sheet>
-        </v-form>
-      </v-expand-transition>
+  <!-- Sewer / Non-Sewer Buttons -->
+  <v-row class="mt-4">
+    <v-col cols="12" md="6">
+      <v-btn block color="teal" @click="activeSubType = activeSubType === 'Sewer' ? null : 'Sewer'">
+        {{ activeSubType === 'Sewer' ? 'Close Sewer Form' : '➕ Add Sewer Department' }}
+      </v-btn>
+    </v-col>
+    <v-col cols="12" md="6">
+      <v-btn block color="purple" @click="activeSubType = activeSubType === 'Non-Sewer' ? null : 'Non-Sewer'">
+        {{ activeSubType === 'Non-Sewer' ? 'Close Non-Sewer Form' : '➕ Add Non-Sewer Department' }}
+      </v-btn>
+    </v-col>
+  </v-row>
 
-      <!-- Department Table -->
-      <v-divider class="my-4" />
-      <v-table>
-        <thead>
-          <tr>
-            <th>Dept ID</th>
-            <th>Department Name</th>
-            <th>Sub-Type</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="dept in departments" :key="dept._id">
-            <td>{{ dept.departmentId }}</td>
-            <td>{{ dept.name }}</td>
-            <td>
-              <v-chip v-if="dept.subType" :color="dept.subType === 'Sewer' ? 'teal' : 'purple'" class="text-white" size="small">
-                {{ dept.subType }}
-              </v-chip>
-              <span v-else>—</span>
-            </td>
-            <td>
-              <v-btn size="small" variant="text" color="primary" @click="edit(dept)">
-                <v-icon>mdi-pencil</v-icon>
-              </v-btn>
-              <v-btn size="small" variant="text" color="red" @click="confirmDelete(dept)">
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-              <v-btn size="small" variant="text" color="teal" @click="goToDetail(dept)">
-                <v-icon>mdi-eye</v-icon>
-              </v-btn>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-    </v-card>
+  <!-- Dynamic Department Form -->
+  <v-expand-transition>
+    <v-form v-if="activeSubType" @submit.prevent="handleSubmit" class="mt-3">
+      <v-sheet class="pa-4" elevation="2" rounded>
+        <v-row>
+          <v-col cols="12" md="4">
+            <v-text-field v-model="form.departmentId" label="Department ID" required />
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-text-field v-model="form.name" label="Department Name" required />
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-btn color="success" type="submit" :loading="loading" class="mt-2">
+              {{ form._id ? 'Update' : `Create ${activeSubType}` }}
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-sheet>
+    </v-form>
+  </v-expand-transition>
+
+  <!-- Department Table -->
+  <v-divider class="my-4" />
+  <v-table>
+    <thead>
+      <tr>
+        <th>Dept ID</th>
+        <th>Department Name</th>
+        <th>Sub-Type</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="dept in departments" :key="dept._id">
+        <td>{{ dept.departmentId }}</td>
+        <td>{{ dept.name }}</td>
+        <td>
+          <v-chip v-if="dept.subType" :color="dept.subType === 'Sewer' ? 'teal' : 'purple'" class="text-white" size="small">
+            {{ dept.subType }}
+          </v-chip>
+          <span v-else>—</span>
+        </td>
+        <td>
+          <v-btn size="small" variant="text" color="primary" @click="edit(dept)">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn size="small" variant="text" color="red" @click="confirmDelete(dept)">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+          <v-btn size="small" variant="text" color="teal" @click="goToDetail(dept)">
+            <v-icon>mdi-eye</v-icon>
+          </v-btn>
+        </td>
+      </tr>
+    </tbody>
+  </v-table>
+</v-card>
   </v-container>
 </template>
 <script setup>

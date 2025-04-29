@@ -1,45 +1,54 @@
 <template>
   <v-container>
-    <!-- Tiny Filters (Auto Apply) -->
-    <v-row dense class="mb-2">
-      <v-col cols="12" md="5">
-        <v-select
-          v-model="filterView"
-          :items="['Month', 'Quarter', 'Year']"
-          label="View By"
-          density="compact"
-          hide-details
-          variant="outlined"
-        />
-      </v-col>
-      <v-col cols="12" md="5">
-        <v-select
-          v-model="filterYear"
-          :items="yearOptions"
-          label="Year"
-          density="compact"
-          hide-details
-          variant="outlined"
-        />
-      </v-col>
-      <v-col cols="12" md="5">
-        <v-select
-          v-model="filterType"
-          :items="['White Collar', 'Blue Collar']"
-          label="Type"
-          density="compact"
-          hide-details
-          variant="outlined"
-        />
-      </v-col>
-    </v-row>
-
-    <!-- Recruitment Pipeline Chart -->
     <v-row dense>
       <v-col cols="12">
-        <v-card class="pa-4" elevation="2">
-          <h3 class="text-h6 font-weight-bold mb-2">Recruitment Pipeline Overview</h3>
-          <apexchart type="bar" height="400" :options="pipelineOptions" :series="pipelineSeries" />
+        <v-card class="pa-4" elevation="3" style="height: 685px;">
+          <!-- Filters -->
+          <v-row dense class="mb-2">
+            <v-col cols="12">
+              <v-select
+                v-model="filterView"
+                :items="['Month', 'Quarter', 'Year']"
+                label="View By"
+                density="compact"
+                hide-details
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="filterYear"
+                :items="yearOptions"
+                label="Year"
+                density="compact"
+                hide-details
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="filterType"
+                :items="['All', 'White Collar', 'Blue Collar']"
+                label="Type"
+                density="compact"
+                hide-details
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Title and Chart -->
+          <h3 class="text-h6 font-weight-bold mb-2">Recruitment Pipeline</h3>
+
+          <div v-if="pipelineOptions && pipelineSeries.length">
+            <apexchart type="bar" height="400" :options="pipelineOptions" :series="pipelineSeries" />
+          </div>
+
+          <div v-else class="text-center py-6">
+            <v-progress-circular indeterminate color="primary" size="50" />
+            <div class="text-caption mt-2">Loading chart...</div>
+          </div>
+
         </v-card>
       </v-col>
     </v-row>
@@ -52,13 +61,13 @@ import axios from 'axios'
 
 const filterView = ref('Month')
 const filterYear = ref(new Date().getFullYear())
-const filterType = ref('White Collar')
+const filterType = ref('All')
+
 const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i)
 
 const pipelineSeries = ref([])
-const pipelineOptions = ref([])
+const pipelineOptions = ref(null)
 
-// Stage labels
 const stageOrder = [
   '1.1 Received Application',
   '1.2 Sent to Manager',
@@ -68,19 +77,15 @@ const stageOrder = [
   '1.6 Onboard'
 ]
 
-// Colors for each stage
 const colorMap = [
-  '#42a5f5', // Application
-  '#66bb6a', // ManagerReview
-  '#ffa726', // Interview
-  '#ab47bc', // JobOffer
-  '#26c6da', // Hired
-  '#ef5350'  // Onboard
+  '#42a5f5', '#66bb6a', '#ffa726', '#ab47bc', '#26c6da', '#ef5350'
 ]
 
-// Fetch Report Data
 const fetchReport = async () => {
   try {
+    pipelineSeries.value = []
+    pipelineOptions.value = null
+
     const res = await axios.get('/api/report', {
       params: {
         view: filterView.value.toLowerCase(),
@@ -95,13 +100,14 @@ const fetchReport = async () => {
       const row = rows.find(r => r.label === label)
       const value = row ? row.values.reduce((a, b) => a + b, 0) : 0
       return {
-        x: label.replace(/^1\.\d+\s/, ''), // Remove "1.1 " etc.
+        x: label.replace(/^1\.\d+\s/, ''),
         y: value,
         color: colorMap[idx]
       }
     })
 
     pipelineSeries.value = [{
+      name: '',  // Optional: you can set 'Candidates' here
       data: pipelineData.map(item => ({
         x: item.x,
         y: item.y
@@ -111,7 +117,17 @@ const fetchReport = async () => {
     pipelineOptions.value = {
       chart: { type: 'bar', stacked: false, toolbar: { show: false } },
       plotOptions: { bar: { horizontal: true } },
-      xaxis: { categories: pipelineData.map(item => item.x) },
+      xaxis: {
+        categories: pipelineData.map(item => item.x),
+        labels: {
+          formatter: (val) => parseInt(val)
+        },
+        tickAmount: 'dataPoints'
+      },
+      yaxis: {
+        forceNiceScale: true,
+        decimalsInFloat: 0
+      },
       colors: pipelineData.map(item => item.color),
       dataLabels: { enabled: true },
       tooltip: {
@@ -120,6 +136,7 @@ const fetchReport = async () => {
         }
       }
     }
+
   } catch (err) {
     console.error('❌ Failed to load pipeline chart:', err)
   }

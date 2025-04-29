@@ -2,17 +2,20 @@
   <v-container>
 
   <div class="whitecollar-nav">
-    
-    <v-btn :class="currentRoute === 'departments' ? 'active-tab' : ''" @click="goTo('/whitecollar/departments')">
-      Department
-    </v-btn>
-    <v-btn :class="currentRoute === 'requisitions' ? 'active-tab' : ''" @click="goTo('/whitecollar/requisitions')">
-      Job Openings
-    </v-btn>
-    <v-btn :class="currentRoute === 'candidates' ? 'active-tab' : ''" @click="goTo('/whitecollar/candidates')">
-      Candidates
-    </v-btn>
-  </div>
+  <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
+    Dashboard
+  </v-btn>
+  <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">
+    Department
+  </v-btn>
+  <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">
+    Job Openings
+  </v-btn>
+  <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">
+    Candidates
+  </v-btn>
+</div>
+
 
     <v-card class="pa-5" elevation="5">
       <v-card-title>
@@ -41,7 +44,7 @@
               />
             </v-col>
             <v-col cols="12" md="2">
-              <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add</v-btn>
+              <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add New Recruiter</v-btn>
             </v-col>
           </v-row>
 
@@ -77,7 +80,7 @@
           </v-col>
           <v-col cols="12" md="4">
             <v-btn color="success" type="submit" :loading="loading" class="mt-2">
-              {{ form._id ? 'Update' : 'Create' }}
+              {{ form._id ? 'Update' : 'Add New Department' }}
             </v-btn>
           </v-col>
         </v-row>

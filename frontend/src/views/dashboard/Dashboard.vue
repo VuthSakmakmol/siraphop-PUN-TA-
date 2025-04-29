@@ -1,8 +1,9 @@
 <template>
+  
   <v-container>
     <v-card class="pa-6" elevation="4">
       <v-card-title class="text-h6 font-weight-bold">
-        Recruitment Dashboard<span v-if="filters.type && filters.type !== 'All'"> - {{ filters.type }}</span>
+        Recruitment Manager Dashboard<span v-if="filters.type && filters.type !== 'All'"> - {{ filters.type }}</span>
       </v-card-title>
 
       <v-divider class="my-4" />
@@ -25,26 +26,7 @@
             clearable outlined dense
           />
         </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.department"
-            :items="departments"
-            item-title="name"
-            item-value="_id"
-            label="Department"
-            clearable outlined dense
-          />
-        </v-col>
-        <!-- <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.jobRequisitionId"
-            :items="jobRequisitions"
-            item-title="jobRequisitionId"
-            item-value="_id"
-            label="Job ID"
-            clearable outlined dense
-          />
-        </v-col> -->
+        
         <v-col cols="12" md="3">
           <v-menu v-model="startDateMenu" :close-on-content-click="false">
             <template #activator="{ props }">
@@ -69,9 +51,7 @@
       <!-- Charts -->
       <v-divider class="my-6" />
       <v-row dense>
-        <v-col cols="12" md="4">
-          <RecruitmentPipelineChart :data="stats.pipeline || {}" />
-        </v-col>
+        
         <v-col cols="12" md="4">
           <SourcePie :data="stats.source || {}" />
         </v-col>
@@ -80,6 +60,9 @@
         </v-col>
         <v-col cols="12" md="4">
           <MonthlyApplicationLine :data="stats.monthly || {}" />
+        </v-col>
+        <v-col cols="12" md="4">
+          <RecruitmentPipelineChart :data="stats.pipeline || {}" />
         </v-col>
         <v-col cols="12" md="4">
           <VacancyKPI :data="kpi" :loading="kpiLoading" />

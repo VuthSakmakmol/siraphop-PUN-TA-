@@ -1,21 +1,22 @@
 <template>
-  <v-card class="pa-5" elevation="4" min-height="300px">
-    <v-card-title class="text-subtitle-1 font-weight-bold mb-2">Vacancy Statistics</v-card-title>
-    <v-divider class="mb-3" />
+  <v-card class="pa-4" elevation="3" style="height: 700px;">
+    <v-card-title class="text-h6 font-weight-bold mb-2">
+      Vacancies Statistics
+    </v-card-title>
+    <v-divider class="mb-4" />
 
-    <div v-if="loading" class="d-flex align-center justify-center" style="height: 200px;">
+    <div v-if="loading" class="d-flex align-center justify-center" style="height: 600px;">
       <v-progress-circular indeterminate color="primary" size="50" />
     </div>
 
     <template v-else>
-      <!-- Your normal KPI display here -->
-      <v-row dense>
-        <v-col cols="12" md="8">
+      <v-row dense class="fill-height">
+        <v-col cols="12">
           <v-row dense>
-            <v-col v-for="(item, index) in kpiList" :key="index" cols="12" sm="6">
-              <v-sheet class="pa-3 kpi-box" elevation="1">
+            <v-col v-for="(item, index) in kpiList" :key="index" cols="12">
+              <v-sheet class="pa-2 kpi-box" elevation="1">
                 <div class="text-caption text-grey-darken-1">{{ item.label }}</div>
-                <div class="text-subtitle-2 font-weight-bold text-primary">
+                <div class="text-body-2 font-weight-bold text-primary">
                   {{ formatDisplay(item.value, item.isMoney) }}
                 </div>
               </v-sheet>
@@ -23,8 +24,7 @@
           </v-row>
         </v-col>
 
-        <!-- Fill Rate Circle -->
-        <v-col cols="12" md="4" class="d-flex align-center justify-center">
+        <v-col cols="12" class="d-flex align-center justify-center mt-4">
           <div class="fillrate-circle-container">
             <svg viewBox="0 0 36 36" class="circular-chart blue">
               <path
@@ -50,34 +50,33 @@
   </v-card>
 </template>
 
-
 <script setup>
 import { computed } from 'vue'
 
-// Props
 const props = defineProps({
   data: {
     type: Object,
     default: () => ({})
   },
-  loading: {           // ✅ add this
+  loading: {
     type: Boolean,
     default: false
   }
 })
 
-// Correct fields according to your backend response
+// ✅ This component only DISPLAY props data, don't fetch
+
 const kpiList = computed(() => [
   { label: 'Total Requisitions', value: props.data.totalRequisitions ?? 0 },
   { label: 'Filled Positions', value: props.data.filled ?? 0 },
-  { label: 'Active Vacancies', value: props.data.activeVacancies ?? 0 },
-  { label: 'Hiring Cost ($)', value: props.data.hiringCost ?? 0, isMoney: true },
-  { label: 'Cost per Hire ($)', value: props.data.costPerHire ?? 0, isMoney: true }
+  { label: 'Total Hiring Cost ($)', value: props.data.hiringCost ?? 0, isMoney: true },
+  { label: 'Cost per Hire ($)', value: props.data.costPerHire ?? 0, isMoney: true },
+  { label: 'Average Days to Hire', value: props.data.averageDaysToHire ?? 0 },
+  { label: 'Active Vacancies', value: props.data.activeVacancies ?? 0 }
 ])
 
 const fillRate = computed(() => parseFloat(props.data.fillRate || 0).toFixed(1))
 
-// Format number display
 const formatDisplay = (value, isMoney = false) => {
   if (isMoney) return `$${parseFloat(value).toFixed(2)}`;
   return value;
@@ -92,27 +91,33 @@ const formatDisplay = (value, isMoney = false) => {
 }
 
 .fillrate-circle-container {
-  max-width: 220px;
+  max-width: 180px;
   width: 100%;
+  margin-top: -50px;
 }
+
 .circular-chart {
   width: 100%;
   height: auto;
 }
+
 .circle-bg {
   fill: none;
   stroke: #ececec;
   stroke-width: 3;
 }
+
 .circle {
   fill: none;
   stroke-width: 3;
   stroke-linecap: round;
   stroke: #1976d2;
+  transition: stroke-dasharray 1s ease;
 }
+
 .percentage {
   fill: #1976d2;
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   text-anchor: middle;
 }
 </style>

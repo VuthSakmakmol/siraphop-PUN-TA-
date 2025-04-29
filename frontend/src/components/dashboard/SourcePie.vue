@@ -1,7 +1,7 @@
 <template>
-  <v-card class="pa-4" elevation="3">
-    <v-card-title class="text-h6 font-weight-bold">Application Source</v-card-title>
-    <v-divider class="mb-3" />
+  <v-card class="pa-4" elevation="2" style="height: 500px;">
+    <v-card-title class="text-h6 font-weight-bold mb-2">Source of Applications</v-card-title>
+    <v-divider class="mb-4" />
     <div class="chart-container">
       <canvas ref="pieCanvas"></canvas>
     </div>
@@ -87,7 +87,7 @@ watch(() => props.data, renderChart, { deep: true })
 
 <style scoped>
 .chart-container {
-  height: 300px;
+  height: 400px;
   position: relative;
 }
 </style>
