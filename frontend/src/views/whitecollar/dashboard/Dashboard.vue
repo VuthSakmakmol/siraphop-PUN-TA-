@@ -113,10 +113,9 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api'
 import dayjs from 'dayjs'
 
 // Chart components
@@ -153,9 +152,9 @@ const formatDate = val => val ? dayjs(val).format('YYYY-MM-DD') : ''
 const fetchFilters = async () => {
   try {
     const [r, d, j] = await Promise.all([
-      axios.get('/api/departments/global-recruiters'),
-      axios.get('/api/departments'),
-      axios.get('/api/job-requisitions')
+      api.get('/departments/global-recruiters'),
+      api.get('/departments'),
+      api.get('/job-requisitions')
     ])
     recruiters.value = r.data.map(x => x.name)
     departments.value = d.data
@@ -168,7 +167,7 @@ const fetchFilters = async () => {
 // Fetch all dashboard stats from a single endpoint
 const fetchDashboardStats = async () => {
   try {
-    const res = await axios.post('/api/dashboard/stats', filters.value)
+    const res = await api.post('/dashboard/stats', filters.value)
     stats.value = res.data
   } catch (err) {
     console.error('❌ Failed to load dashboard stats', err)
@@ -181,6 +180,7 @@ onMounted(async () => {
   await fetchDashboardStats()
 })
 </script>
+
 
 <style scoped>
 .v-select,

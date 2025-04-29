@@ -219,10 +219,9 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api' // ✅ centralized API import
 import Swal from 'sweetalert2'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -267,7 +266,6 @@ const router = useRouter()
 const route = useRoute()
 
 const currentRoute = computed(() => route.path.split('/')[2])
-
 const goTo = (path) => {
   if (route.path !== path) router.push(path)
 }
@@ -289,7 +287,6 @@ const statusOptions = [
   { title: 'Cancel', value: 'Cancel' }
 ]
 
-// 🔔 Standardized alert
 const alertBox = (icon, title, text, html = '') => {
   return Swal.fire({
     icon,
@@ -301,19 +298,18 @@ const alertBox = (icon, title, text, html = '') => {
   })
 }
 
-// 📦 Fetch
 const fetchDepartments = async () => {
-  const res = await axios.get('/api/departments?type=White Collar')
+  const res = await api.get('/departments?type=White Collar')
   departments.value = res.data
 }
 
 const fetchGlobalRecruiters = async () => {
-  const res = await axios.get('/api/departments/global-recruiters')
+  const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
 }
 
 const fetchRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
+  const res = await api.get('/job-requisitions')
   jobRequisitions.value = res.data
     .filter(j => j.type === 'White Collar')
     .map(j => ({
@@ -333,7 +329,6 @@ const onDepartmentChange = () => {
   }
 }
 
-// 📤 Export
 const exportToExcel = () => {
   if (exportInProgress.value) return
   exportInProgress.value = true
@@ -373,7 +368,6 @@ const exportToExcel = () => {
   }
 }
 
-// 🧾 Submit
 const handleSubmit = async () => {
   const payload = { ...form.value }
 
@@ -388,7 +382,7 @@ const handleSubmit = async () => {
   try {
     if (isEditing.value) {
       if (form.value.status === 'Vacant') {
-        const check = await axios.get(`/api/candidates/requisition/${editingId.value}/active-offers`)
+        const check = await api.get(`/candidates/requisition/${editingId.value}/active-offers`)
         const offerCount = check.data.count || 0
 
         if (offerCount > 0) {
@@ -401,24 +395,22 @@ const handleSubmit = async () => {
         }
       }
 
-      await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
+      await api.put(`/job-requisitions/${editingId.value}`, payload)
       await alertBox('success', '✅ Updated', 'Job requisition updated successfully.')
     } else {
-      await axios.post('/api/job-requisitions', payload)
+      await api.post('/job-requisitions', payload)
       await alertBox('success', '✅ Created', 'Job requisition created successfully.')
     }
 
     fetchRequisitions()
     resetForm()
     showForm.value = false
-
   } catch (err) {
     const msg = err?.response?.data?.message || 'Failed to submit'
     await alertBox('error', '❌ Submission Error', msg)
   }
 }
 
-// 🛠 Edit
 const editRequisition = (job) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   isEditing.value = true
@@ -436,6 +428,7 @@ const editRequisition = (job) => {
   showForm.value = true
   onDepartmentChange()
 }
+
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
     title: '🗑️ Confirm Deletion',
@@ -446,23 +439,20 @@ const deleteRequisition = async (id) => {
     cancelButtonText: 'Cancel',
     allowEnterKey: true,
     confirmButtonColor: '#e53935'
-  });
+  })
 
-  if (!confirm.isConfirmed) return;
+  if (!confirm.isConfirmed) return
 
   try {
-    await axios.delete(`/api/job-requisitions/${id}`);
-    await alertBox('success', '✅ Deleted', 'Job requisition has been removed.');
-    fetchRequisitions();
+    await api.delete(`/job-requisitions/${id}`)
+    await alertBox('success', '✅ Deleted', 'Job requisition has been removed.')
+    fetchRequisitions()
   } catch (err) {
-    console.error('❌ Deletion error:', err);
-    const msg = err?.response?.data?.message || '❌ Failed to delete job requisition';
-    await alertBox('error', '❌ Cannot Delete', msg);
+    const msg = err?.response?.data?.message || '❌ Failed to delete job requisition'
+    await alertBox('error', '❌ Cannot Delete', msg)
   }
 }
 
-
-// 🔄 Reset
 const resetForm = () => {
   form.value = {
     departmentId: '',
@@ -481,10 +471,8 @@ const resetForm = () => {
   recruiters.value = []
 }
 
-// 📆 Format Date
 const formatDate = val => val ? new Date(val).toLocaleDateString() : ''
 
-// 🔍 Filter
 const filteredRequisitions = computed(() => {
   if (!globalSearch.value) return jobRequisitions.value
   const keyword = globalSearch.value.toLowerCase()
@@ -495,7 +483,6 @@ const filteredRequisitions = computed(() => {
   )
 })
 
-// 👥 Stage Filter Nav
 const viewStageCandidates = (item) => {
   const base = {
     path: '/whitecollar/candidates',

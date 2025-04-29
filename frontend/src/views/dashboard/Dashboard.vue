@@ -72,9 +72,10 @@
   </v-container>
 </template>
 
+
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api'
 import dayjs from 'dayjs'
 
 // Components
@@ -94,14 +95,12 @@ const filters = ref({
   end: ''
 })
 
-
 const recruiters = ref([])
 const departments = ref([])
 const jobRequisitions = ref([])
 const stats = ref({})
 const kpi = ref({})
 const kpiLoading = ref(false)
-
 
 const startDateMenu = ref(false)
 const endDateMenu = ref(false)
@@ -112,9 +111,9 @@ const formatDate = val => val ? dayjs(val).format('YYYY-MM-DD') : ''
 const fetchFilters = async () => {
   try {
     const [r, d, j] = await Promise.all([
-      axios.get('/api/departments/global-recruiters'),
-      axios.get('/api/departments'),
-      axios.get('/api/job-requisitions')
+      api.get('/departments/global-recruiters'),
+      api.get('/departments'),
+      api.get('/job-requisitions')
     ])
     recruiters.value = r.data.map(x => x.name)
     departments.value = d.data
@@ -124,37 +123,31 @@ const fetchFilters = async () => {
   }
 }
 
-
 const fetchDashboardKPI = async () => {
   try {
-    kpiLoading.value = true;
-    const res = await axios.get('/api/dashboard/kpis', { params: filters.value })
-    kpi.value = res.data;
+    kpiLoading.value = true
+    const res = await api.get('/dashboard/kpis', { params: filters.value })
+    kpi.value = res.data
   } catch (err) {
     console.error('❌ Fetch KPI error:', err)
   } finally {
-    kpiLoading.value = false;
+    kpiLoading.value = false
   }
 }
 
-
-
 const fetchDashboardStats = async () => {
   try {
-    const res = await axios.post('/api/dashboard/stats', { ...filters.value })
+    const res = await api.post('/dashboard/stats', { ...filters.value })
     stats.value = res.data
   } catch (err) {
     console.error('❌ Fetch stats error:', err)
   }
 }
 
-
-
 const applyFilters = async () => {
   await fetchDashboardStats()
   await fetchDashboardKPI()
 }
-
 
 // Initial load
 onMounted(async () => {
@@ -162,6 +155,7 @@ onMounted(async () => {
   await applyFilters()
 })
 </script>
+
 
 <style scoped>
 .v-select,

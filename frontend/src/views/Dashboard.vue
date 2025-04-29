@@ -118,11 +118,10 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
 import dayjs from 'dayjs'
+import api from '@/utils/api' // ✅ Centralized API module
 
 // ✅ Import Chart Components
 import PipelineChart from '@/components/dashboard/PipelineChart.vue'
@@ -162,9 +161,9 @@ const formatDate = (val) => val ? dayjs(val).format('YYYY-MM-DD') : ''
 const fetchFilters = async () => {
   try {
     const [recRes, deptRes, jobRes] = await Promise.all([
-      axios.get('/api/departments/all-recruiters'),
-      axios.get('/api/departments'),
-      axios.get('/api/job-requisitions')
+      api.get('/departments/all-recruiters'),
+      api.get('/departments'),
+      api.get('/job-requisitions')
     ])
     recruiters.value = recRes.data.map(r => r.name || r)
     departments.value = deptRes.data
@@ -176,7 +175,7 @@ const fetchFilters = async () => {
 
 const fetchDashboardData = async () => {
   try {
-    const res = await axios.post('/api/dashboard/summary', filters.value)
+    const res = await api.post('/dashboard/summary', filters.value)
     stats.value = res.data
   } catch (err) {
     console.error('❌ Failed to fetch dashboard data', err)
@@ -204,6 +203,7 @@ onMounted(async () => {
   await fetchDashboardData()
 })
 </script>
+
 
 <style scoped>
 .v-select,

@@ -76,10 +76,11 @@
     </v-card>
   </v-container>
 </template>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'  // ✅ use api.js wrapper
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -102,7 +103,7 @@ const alertBox = (icon, title, text = '') => {
 
 const fetchCandidate = async () => {
   try {
-    const res = await axios.get(`/api/candidates/${route.params.id}`)
+    const res = await api.get(`/candidates/${route.params.id}`)
     candidate.value = res.data
   } catch {
     alertBox('error', '❌ Failed to Load', 'Unable to fetch candidate details.')
@@ -117,7 +118,7 @@ const uploadDocuments = async () => {
   try {
     const formData = new FormData()
     newDocuments.value.forEach(file => formData.append('documents', file))
-    await axios.post(`/api/candidates/${route.params.id}/documents`, formData)
+    await api.post(`/candidates/${route.params.id}/documents`, formData)
     alertBox('success', '✅ Uploaded', 'Documents uploaded successfully.')
     newDocuments.value = []
     fetchCandidate()
@@ -142,7 +143,7 @@ const deleteDocument = async (index) => {
 
   try {
     const updatedDocs = candidate.value.documents.filter((_, i) => i !== index)
-    await axios.put(`/api/candidates/${route.params.id}`, { documents: updatedDocs })
+    await api.put(`/candidates/${route.params.id}`, { documents: updatedDocs })
     candidate.value.documents = updatedDocs
     alertBox('success', '🗑️ Deleted', 'Document removed successfully.')
   } catch {

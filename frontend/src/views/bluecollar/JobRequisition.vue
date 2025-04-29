@@ -232,11 +232,10 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
 import * as XLSX from 'xlsx'
 import dayjs from 'dayjs'
@@ -292,7 +291,6 @@ const exportToExcel = () => {
   XLSX.writeFile(workbook, 'bluecollar_job_requisitions.xlsx')
 }
 
-
 const form = ref({
   departmentId: '',
   jobTitle: '',
@@ -326,13 +324,13 @@ const statusOptionsWithColor = computed(() =>
 )
 
 const fetchGlobalRecruiters = async () => {
-  const res = await axios.get('/api/departments/global-recruiters')
+  const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
 }
 
 const fetchDepartments = async () => {
   if (!subType.value) return
-  const res = await axios.get(`/api/departments?type=Blue Collar&subType=${subType.value}`)
+  const res = await api.get(`/departments?type=Blue Collar&subType=${subType.value}`)
   departments.value = res.data
 }
 
@@ -343,7 +341,7 @@ const onDepartmentChange = () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
+  const res = await api.get('/job-requisitions')
   jobRequisitions.value = res.data
     .filter(j => j.type === 'Blue Collar')
     .map(j => ({
@@ -353,8 +351,6 @@ const fetchRequisitions = async () => {
       onboardCount: Number(j.onboardCount) || 0
     }))
 }
-
-
 
 const goToFilteredCandidates = (job, status) => {
   const base = {
@@ -381,7 +377,7 @@ const handleSubmit = async () => {
   const payload = { ...form.value, type: 'Blue Collar' }
   try {
     if (isEditing.value) {
-      await axios.put(`/api/job-requisitions/${editingId.value}`, payload)
+      await api.put(`/job-requisitions/${editingId.value}`, payload)
       await Swal.fire({
         icon: 'success',
         title: '✅ Updated',
@@ -389,7 +385,7 @@ const handleSubmit = async () => {
         allowEnterKey: true
       })
     } else {
-      await axios.post('/api/job-requisitions', payload)
+      await api.post('/job-requisitions', payload)
       await Swal.fire({
         icon: 'success',
         title: '✅ Created',
@@ -430,6 +426,7 @@ const editRequisition = (job) => {
   fetchDepartments().then(onDepartmentChange)
   showForm.value = true
 }
+
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
     title: 'Delete Job Requisition?',
@@ -445,7 +442,7 @@ const deleteRequisition = async (id) => {
   if (!confirm.isConfirmed) return
 
   try {
-    await axios.delete(`/api/job-requisitions/${id}`)
+    await api.delete(`/job-requisitions/${id}`)
     await Swal.fire({
       icon: 'success',
       title: '✅ Deleted',
@@ -466,7 +463,6 @@ const deleteRequisition = async (id) => {
     })
   }
 }
-
 
 const resetForm = () => {
   form.value = {
@@ -494,6 +490,7 @@ onMounted(() => {
   fetchRequisitions()
 })
 </script>
+
 
 
 <style scoped>

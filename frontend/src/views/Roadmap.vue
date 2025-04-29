@@ -1,7 +1,7 @@
 <template>
     <v-container>
       <!-- Title + Create Button -->
-      <v-row class="mb-4" align="center" justify="space-between">
+      <v-row class="mb-4" align-center="center" justify="space-between">
         <v-col cols="auto">
           <h2 class="text-h6 font-weight-bold">Roadmap HC Management</h2>
         </v-col>
@@ -112,114 +112,112 @@
       </v-dialog>
     </v-container>
   </template>
-  
   <script setup>
-  import { ref, onMounted } from 'vue'
-  import axios from 'axios'
-  import Swal from 'sweetalert2'
-  
-  const roadmaps = ref([])
-  const filterYear = ref('')
-  const filterType = ref('')
-  const filterMonth = ref('')
-  const dialog = ref(false)
-  const editMode = ref(false)
-  const form = ref({
-    year: '',
-    month: '',
-    roadmapHC: '',
-    actualHC: '',
-    hiringTargetHC: '',
-    type: '',
-  })
-  const selectedId = ref(null)
-  
-  const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i)
-  const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  
-  const fetchRoadmaps = async () => {
+import { ref, onMounted } from 'vue'
+import Swal from 'sweetalert2'
+import api from '@/utils/api' // ✅ centralized Axios instance
+
+const roadmaps = ref([])
+const filterYear = ref('')
+const filterType = ref('')
+const filterMonth = ref('')
+const dialog = ref(false)
+const editMode = ref(false)
+const selectedId = ref(null)
+
+const form = ref({
+  year: '',
+  month: '',
+  roadmapHC: '',
+  actualHC: '',
+  hiringTargetHC: '',
+  type: '',
+})
+
+const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i)
+const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const fetchRoadmaps = async () => {
   try {
-    let url = '/api/roadmap'
+    let url = '/roadmap'
     const params = []
     if (filterYear.value) params.push(`year=${filterYear.value}`)
     if (filterType.value) params.push(`type=${filterType.value}`)
     if (filterMonth.value) params.push(`month=${filterMonth.value}`)
     if (params.length) url += '?' + params.join('&')
 
-    const res = await axios.get(url)
+    const res = await api.get(url) // ✅ use api.get instead of axios.get
     roadmaps.value = res.data
   } catch (err) {
     console.error(err)
   }
 }
 
-  
-  const openCreateDialog = () => {
-    resetForm()
-    editMode.value = false
-    dialog.value = true
+const openCreateDialog = () => {
+  resetForm()
+  editMode.value = false
+  dialog.value = true
+}
+
+const editRoadmap = (item) => {
+  form.value = { ...item }
+  selectedId.value = item._id
+  editMode.value = true
+  dialog.value = true
+}
+
+const saveRoadmap = async () => {
+  try {
+    if (editMode.value) {
+      await api.put(`/roadmap/${selectedId.value}`, form.value) // ✅
+      Swal.fire('Success', 'Roadmap updated successfully', 'success')
+    } else {
+      await api.post('/roadmap', form.value) // ✅
+      Swal.fire('Success', 'Roadmap created successfully', 'success')
+    }
+    dialog.value = false
+    fetchRoadmaps()
+  } catch (err) {
+    console.error(err)
+    Swal.fire('Error', 'Failed to save roadmap', 'error')
   }
-  
-  const editRoadmap = (item) => {
-    form.value = { ...item }
-    selectedId.value = item._id
-    editMode.value = true
-    dialog.value = true
-  }
-  
-  const saveRoadmap = async () => {
+}
+
+const deleteRoadmap = async (id) => {
+  const result = await Swal.fire({
+    title: 'Are you sure?',
+    text: 'This will delete the roadmap entry!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete it!',
+  })
+
+  if (result.isConfirmed) {
     try {
-      if (editMode.value) {
-        await axios.put(`/api/roadmap/${selectedId.value}`, form.value)
-        Swal.fire('Success', 'Roadmap updated successfully', 'success')
-      } else {
-        await axios.post('/api/roadmap', form.value)
-        Swal.fire('Success', 'Roadmap created successfully', 'success')
-      }
-      dialog.value = false
+      await api.delete(`/roadmap/${id}`) // ✅
+      Swal.fire('Deleted!', 'Roadmap entry has been deleted.', 'success')
       fetchRoadmaps()
     } catch (err) {
       console.error(err)
-      Swal.fire('Error', 'Failed to save roadmap', 'error')
+      Swal.fire('Error', 'Failed to delete roadmap', 'error')
     }
   }
-  
-  const deleteRoadmap = async (id) => {
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'This will delete the roadmap entry!',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-    })
-  
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`/api/roadmap/${id}`)
-        Swal.fire('Deleted!', 'Roadmap entry has been deleted.', 'success')
-        fetchRoadmaps()
-      } catch (err) {
-        console.error(err)
-        Swal.fire('Error', 'Failed to delete roadmap', 'error')
-      }
-    }
+}
+
+const resetForm = () => {
+  form.value = {
+    year: '',
+    month: '',
+    roadmapHC: '',
+    actualHC: '',
+    hiringTargetHC: '',
+    type: '',
   }
-  
-  const resetForm = () => {
-    form.value = {
-      year: '',
-      month: '',
-      roadmapHC: '',
-      actualHC: '',
-      hiringTargetHC: '',
-      type: '',
-    }
-  }
-  
-  onMounted(() => {
-    fetchRoadmaps()
-  })
-  </script>
+}
+
+onMounted(fetchRoadmaps)
+</script>
+
   
 
 <style scoped>

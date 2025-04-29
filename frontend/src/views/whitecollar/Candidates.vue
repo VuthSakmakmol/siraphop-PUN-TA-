@@ -175,10 +175,11 @@
       </v-card>
     </v-container>
   </template>
+
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api' // ✅ your centralized API wrapper
 import Swal from 'sweetalert2'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -192,7 +193,6 @@ const tz = 'Asia/Phnom_Penh'
 const route = useRoute()
 const router = useRouter()
 
-// ✅ Alert Helper
 const alertBox = (icon, title, text = '', html = '') => {
   return Swal.fire({
     icon,
@@ -294,7 +294,7 @@ const confirmStageDate = async () => {
   const { candidate, stage, date } = stageDialog.value
   stageDialog.value.show = false
   try {
-    await axios.put(`/api/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
+    await api.put(`/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
     const index = candidates.value.findIndex(c => c._id === candidate._id)
     if (index !== -1) {
       candidates.value[index].progressDates[stage] = date
@@ -318,12 +318,12 @@ const handleSubmit = async () => {
     form.value.documents.forEach(d => fd.append('documents', d))
 
     const method = isEditMode.value ? 'put' : 'post'
-    const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
-    const res = await axios[method](url, fd)
+    const url = isEditMode.value ? `/candidates/${editingCandidateId.value}` : `/candidates`
+    const res = await api[method](url, fd)
     const updated = res.data.candidate
 
     if (isEditMode.value) {
-      const jobRes = await axios.get(`/api/job-requisitions/${updated.jobRequisitionId}`)
+      const jobRes = await api.get(`/job-requisitions/${updated.jobRequisitionId}`)
       updated.jobRequisitionId = jobRes.data
       const index = candidates.value.findIndex(c => c._id === updated._id)
       if (index !== -1) candidates.value[index] = updated
@@ -350,7 +350,7 @@ const deleteCandidate = async id => {
   })
   if (!confirm.isConfirmed) return
 
-  await axios.delete(`/api/candidates/${id}`)
+  await api.delete(`/candidates/${id}`)
   await fetchCandidates()
   alertBox('success', '✅ Deleted', 'Candidate successfully removed.')
 }
@@ -371,19 +371,12 @@ const filterCandidates = () => {
 watch(globalSearch, filterCandidates)
 
 const fetchCandidates = async () => {
-  const res = await axios.get('/api/candidates?type=White%20Collar')
+  const res = await api.get('/candidates?type=White%20Collar')
   candidates.value = res.data
   filterCandidates()
 
   const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
-  const counts = {
-    Application: 0,
-    ManagerReview: 0,
-    Interview: 0,
-    JobOffer: 0,
-    Hired: 0,
-    Onboard: 0
-  }
+  const counts = Object.fromEntries(stages.map(s => [s, 0]))
   for (const candidate of res.data) {
     if (stages.includes(candidate.progress)) {
       counts[candidate.progress] += 1
@@ -393,12 +386,12 @@ const fetchCandidates = async () => {
 }
 
 const fetchDepartments = async () => {
-  const res = await axios.get('/api/departments?type=White Collar')
+  const res = await api.get('/departments?type=White Collar')
   departments.value = res.data
 }
 
 const fetchRecruiters = async () => {
-  const res = await axios.get('/api/departments/global-recruiters')
+  const res = await api.get('/departments/global-recruiters')
   recruiters.value = res.data.map(r => r.name)
 }
 
@@ -412,7 +405,7 @@ const form = ref({
 })
 
 const updateRequisitionDetails = async (jobId) => {
-  const res = await axios.get(`/api/job-requisitions/${jobId}`)
+  const res = await api.get(`/job-requisitions/${jobId}`)
   const job = res.data
   form.value.department = job.departmentId?.name || ''
   form.value.jobTitle = job.jobTitle || ''
@@ -420,7 +413,7 @@ const updateRequisitionDetails = async (jobId) => {
 }
 
 const fetchJobRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
+  const res = await api.get('/job-requisitions')
   jobRequisitionOptions.value = res.data
     .filter(j => j.status === 'Vacant' && j.type === 'White Collar')
     .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
@@ -497,6 +490,7 @@ onMounted(() => {
   fetchRecruiters()
 })
 </script>
+
 
 
   <style scoped>

@@ -42,10 +42,9 @@
     </div>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import api from '@/utils/api' // ✅ Use centralized API instance
 
 const reportData = ref([])
 const dynamicColumns = ref([])
@@ -68,7 +67,7 @@ const fetchReport = async () => {
       type: filterType.value
     }
 
-    const res = await axios.get('/api/report', { params: payload })
+    const res = await api.get('/report', { params: payload }) // ✅ Use `api` instead of axios
     reportData.value = res.data.rows
     dynamicColumns.value = res.data.columns
   } catch (err) {
@@ -78,6 +77,7 @@ const fetchReport = async () => {
 
 onMounted(applyFilters)
 </script>
+
 
 <style scoped>
 /* Table Scroll Wrapper */

@@ -44,7 +44,7 @@
               />
             </v-col>
             <v-col cols="12" md="2">
-              <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add New Recruiter</v-btn>
+              <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add Recruiter</v-btn>
             </v-col>
           </v-row>
 
@@ -118,10 +118,11 @@
     </v-card>
   </v-container>
 </template>
+
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api' // ✅ using centralized API module
 import Swal from 'sweetalert2'
 
 const router = useRouter()
@@ -158,7 +159,7 @@ const fireAlert = (type, title, text) => {
 
 const fetchDepartments = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/departments?type=White Collar')
+    const res = await api.get('/departments?type=White Collar')
     departments.value = res.data
   } catch (err) {
     fireAlert('error', 'Fetch Failed', err?.response?.data?.message || 'Failed to fetch departments')
@@ -167,7 +168,7 @@ const fetchDepartments = async () => {
 
 const fetchGlobalRecruiters = async () => {
   try {
-    const res = await axios.get('http://localhost:5000/api/departments/global-recruiters')
+    const res = await api.get('/departments/global-recruiters')
     globalRecruiters.value = res.data
   } catch (err) {
     fireAlert('error', 'Load Error', 'Failed to load global recruiters')
@@ -193,10 +194,10 @@ const handleSubmit = async () => {
   loading.value = true
   try {
     if (form.value._id) {
-      await axios.put(`http://localhost:5000/api/departments/${form.value._id}`, form.value)
+      await api.put(`/departments/${form.value._id}`, form.value)
       fireAlert('success', '✅ Updated', 'Department updated successfully')
     } else {
-      await axios.post('http://localhost:5000/api/departments', form.value)
+      await api.post('/departments', form.value)
       fireAlert('success', '✅ Created', 'Department created successfully')
     }
     resetForm()
@@ -215,7 +216,7 @@ const addRecruiter = async () => {
   }
 
   try {
-    await axios.post('http://localhost:5000/api/departments/global-recruiter', {
+    await api.post('/departments/global-recruiter', {
       recruiter: globalRecruiter.value.trim()
     })
     fireAlert('success', '✅ Success', 'Recruiter added globally')
@@ -253,7 +254,7 @@ const showEditDeleteOptions = async (recruiter) => {
 
     if (newName && newName.trim()) {
       try {
-        await axios.put(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`, {
+        await api.put(`/departments/global-recruiters/${recruiter._id}`, {
           name: newName.trim()
         })
         fireAlert('success', '✅ Updated', 'Recruiter updated successfully')
@@ -274,7 +275,7 @@ const showEditDeleteOptions = async (recruiter) => {
 
     if (confirm.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`)
+        await api.delete(`/departments/global-recruiters/${recruiter._id}`)
         fireAlert('success', '✅ Deleted', 'Recruiter removed')
         await fetchGlobalRecruiters()
       } catch (err) {
@@ -295,7 +296,7 @@ const confirmDelete = (dept) => {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:5000/api/departments/${dept._id}`)
+        await api.delete(`/departments/${dept._id}`)
         fireAlert('success', '🗑️ Deleted', 'Department has been removed.')
         fetchDepartments()
       } catch (err) {
@@ -329,6 +330,7 @@ onMounted(() => {
   fetchGlobalRecruiters()
 })
 </script>
+
 
 
 <style scoped>

@@ -73,7 +73,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -83,7 +83,7 @@ const newJobTitle = ref('')
 
 const fetchDepartment = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/api/departments/${route.params.id}`)
+    const res = await api.get(`/departments/${route.params.id}`)
     department.value = res.data
   } catch {
     Swal.fire({
@@ -104,11 +104,8 @@ const addJobTitle = async () => {
       allowEnterKey: true
     })
   }
-
   try {
-    await axios.put(`http://localhost:5000/api/departments/${route.params.id}/job-title`, {
-      title: newJobTitle.value.trim()
-    })
+    await api.put(`/departments/${route.params.id}/job-title`, { title: newJobTitle.value.trim() })
     Swal.fire({
       icon: 'success',
       title: '✅ Added',
@@ -137,13 +134,10 @@ const removeJobTitle = async (title) => {
     cancelButtonText: 'Cancel',
     allowEnterKey: true
   })
-
   if (!confirm.isConfirmed) return
 
   try {
-    const res = await axios.put(`http://localhost:5000/api/departments/${route.params.id}/remove-job-title`, {
-      title
-    })
+    const res = await api.put(`/departments/${route.params.id}/remove-job-title`, { title })
     Swal.fire({
       icon: 'success',
       title: '✅ Removed',
@@ -171,6 +165,8 @@ const goBack = () => {
 
 onMounted(fetchDepartment)
 </script>
+
+
 
 
 <style scoped>

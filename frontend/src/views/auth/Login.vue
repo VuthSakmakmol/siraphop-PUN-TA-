@@ -42,6 +42,8 @@ import { ref } from 'vue'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { useRouter } from 'vue-router'
+import api from '@/utils/api'
+
 
 const email = ref('')
 const password = ref('')
@@ -49,7 +51,7 @@ const router = useRouter()
 
 const login = async () => {
   try {
-    const res = await axios.post('http://localhost:5000/api/auth/login', {
+    const res = await api.post('/auth/login', {
       email: email.value,
       password: password.value
     })

@@ -41,7 +41,7 @@
           />
         </v-col>
         <v-col cols="12" md="2">
-          <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add New Recruiter</v-btn>
+          <v-btn color="indigo" class="mt-2" @click="addRecruiter">Add Recruiter</v-btn>
         </v-col>
       </v-row>
       <v-row>
@@ -143,7 +143,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
@@ -176,12 +176,12 @@ const resetForm = () => {
 }
 
 const fetchDepartments = async () => {
-  const res = await axios.get('http://localhost:5000/api/departments?type=Blue Collar')
+  const res = await api.get('/departments?type=Blue Collar')
   departments.value = res.data
 }
 
 const fetchGlobalRecruiters = async () => {
-  const res = await axios.get('http://localhost:5000/api/departments/global-recruiters')
+  const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data
 }
 
@@ -193,7 +193,7 @@ const handleSubmit = async () => {
 
   try {
     if (form.value._id) {
-      await axios.put(`http://localhost:5000/api/departments/${form.value._id}`, form.value)
+      await api.put(`/departments/${form.value._id}`, form.value)
       await Swal.fire({
         icon: 'success',
         title: '✅ Updated',
@@ -201,7 +201,7 @@ const handleSubmit = async () => {
         allowEnterKey: true
       })
     } else {
-      await axios.post('http://localhost:5000/api/departments', form.value)
+      await api.post('/departments', form.value)
       await Swal.fire({
         icon: 'success',
         title: '✅ Created',
@@ -225,7 +225,7 @@ const handleSubmit = async () => {
 
 const addRecruiter = async () => {
   if (!globalRecruiter.value.trim()) return
-  await axios.post('http://localhost:5000/api/departments/global-recruiter', {
+  await api.post('/departments/global-recruiter', {
     recruiter: globalRecruiter.value.trim()
   })
   globalRecruiter.value = ''
@@ -260,7 +260,7 @@ const showEditDeleteOptions = async (recruiter) => {
       inputValidator: value => !value.trim() && 'Recruiter name cannot be empty'
     })
     if (newName?.trim()) {
-      await axios.put(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`, { name: newName })
+      await api.put(`/departments/global-recruiters/${recruiter._id}`, { name: newName })
       await fetchGlobalRecruiters()
       await Swal.fire({
         icon: 'success',
@@ -281,7 +281,7 @@ const showEditDeleteOptions = async (recruiter) => {
       allowEnterKey: true
     })
     if (confirm.isConfirmed) {
-      await axios.delete(`http://localhost:5000/api/departments/global-recruiters/${recruiter._id}`)
+      await api.delete(`/departments/global-recruiters/${recruiter._id}`)
       await fetchGlobalRecruiters()
       await Swal.fire({
         icon: 'success',
@@ -311,7 +311,7 @@ const confirmDelete = async (dept) => {
   })
   if (result.isConfirmed) {
     try {
-      await axios.delete(`http://localhost:5000/api/departments/${dept._id}`)
+      await api.delete(`/departments/${dept._id}`)
       fetchDepartments()
       await Swal.fire({
         icon: 'success',
@@ -343,6 +343,8 @@ onMounted(() => {
   fetchGlobalRecruiters()
 })
 </script>
+
+
 
 
 <style scoped>

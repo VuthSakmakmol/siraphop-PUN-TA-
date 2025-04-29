@@ -69,11 +69,10 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -85,7 +84,7 @@ const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired'
 
 const fetchCandidate = async () => {
   try {
-    const res = await axios.get(`/api/candidates/${route.params.id}`)
+    const res = await api.get(`/candidates/${route.params.id}`)
     candidate.value = res.data
   } catch (err) {
     Swal.fire({
@@ -106,11 +105,10 @@ const uploadDocuments = async () => {
       allowEnterKey: true
     })
   }
-
   try {
     const formData = new FormData()
     newDocuments.value.forEach(file => formData.append('documents', file))
-    await axios.post(`/api/candidates/${route.params.id}/documents`, formData)
+    await api.post(`/candidates/${route.params.id}/documents`, formData)
     Swal.fire({
       icon: 'success',
       title: '✅ Uploaded',
@@ -137,15 +135,13 @@ const deleteDocument = async (index) => {
     showCancelButton: true,
     confirmButtonText: 'Yes, delete',
     cancelButtonText: 'Cancel',
-    allowEnterKey: true,
-    confirmButtonColor: '#e53935'
+    allowEnterKey: true
   })
-
   if (!confirm.isConfirmed) return
 
   try {
     const updatedDocs = candidate.value.documents.filter((_, i) => i !== index)
-    await axios.put(`/api/candidates/${route.params.id}`, { documents: updatedDocs })
+    await api.put(`/candidates/${route.params.id}`, { documents: updatedDocs })
     candidate.value.documents = updatedDocs
     Swal.fire({
       icon: 'success',
@@ -164,7 +160,7 @@ const deleteDocument = async (index) => {
 }
 
 const previewDocument = (docPath) => {
-  const fullUrl = `http://localhost:5000/${docPath.replace(/\\/g, '/')}`
+  const fullUrl = `http://128.199.185.84:5000/${docPath.replace(/\\/g, '/')}`
   window.open(fullUrl, '_blank')
 }
 
@@ -175,6 +171,7 @@ onMounted(() => {
   fetchCandidate()
 })
 </script>
+
 
 <style scoped>
 .v-card-text p {

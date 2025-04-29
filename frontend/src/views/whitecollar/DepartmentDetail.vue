@@ -62,11 +62,10 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api' // ✅ use centralized API
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -80,7 +79,7 @@ const fireAlert = (type, title, text) => {
 
 const fetchDepartment = async () => {
   try {
-    const res = await axios.get(`http://localhost:5000/api/departments/${route.params.id}`)
+    const res = await api.get(`/departments/${route.params.id}`)
     department.value = res.data
   } catch {
     fireAlert('error', 'Failed to Load', 'Could not load department details.')
@@ -94,7 +93,7 @@ const addJobTitle = async () => {
   }
 
   try {
-    await axios.put(`http://localhost:5000/api/departments/${route.params.id}/job-title`, {
+    await api.put(`/departments/${route.params.id}/job-title`, {
       title: newJobTitle.value.trim()
     })
     fireAlert('success', '✅ Added', 'Job title has been added.')
@@ -119,7 +118,7 @@ const removeJobTitle = async (title) => {
   if (!confirm.isConfirmed) return
 
   try {
-    const res = await axios.put(`http://localhost:5000/api/departments/${route.params.id}/remove-job-title`, {
+    const res = await api.put(`/departments/${route.params.id}/remove-job-title`, {
       title
     })
     fireAlert('success', '✅ Removed', 'Job title has been removed.')
@@ -135,6 +134,7 @@ const goBack = () => {
 
 onMounted(fetchDepartment)
 </script>
+
 
 <style scoped>
 .v-table {

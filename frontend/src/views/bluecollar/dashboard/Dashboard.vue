@@ -98,6 +98,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
+import api from '@/utils/api'
 
 import PipelineChart from '@/components/dashboard/PipelineChart.vue'
 import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
@@ -134,9 +135,9 @@ const formatDate = (val) => dayjs(val).format('YYYY-MM-DD')
 const fetchFilters = async () => {
   try {
     const [recRes, deptRes, jobRes] = await Promise.all([
-      axios.get('/api/departments/all-recruiters'),
-      axios.get('/api/departments?type=White Collar'),
-      axios.get('/api/job-requisitions')
+    api.get('/departments/all-recruiters'),
+    api.get('/departments?type=White Collar'),
+    api.get('/job-requisitions')
     ])
 
     recruiters.value = recRes.data.map(r => r.name || r)
@@ -149,7 +150,7 @@ const fetchFilters = async () => {
 
 const fetchDashboardData = async () => {
   try {
-    const res = await axios.post('/api/dashboard/summary', filters.value)
+    const res = await api.post('/dashboard/summary', filters.value)
     stats.value = res.data
   } catch (err) {
     console.error('❌ Dashboard load error', err)

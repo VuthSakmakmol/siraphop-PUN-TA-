@@ -187,11 +187,10 @@
     </v-card>
   </v-container>
 </template>
-
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -286,7 +285,7 @@ const confirmStageDate = async () => {
   const { candidate, stage, date } = stageDialog.value
   stageDialog.value.show = false
   try {
-    await axios.put(`/api/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
+    await api.put(`/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
     const index = candidates.value.findIndex(c => c._id === candidate._id)
     if (index !== -1) {
       candidates.value[index].progressDates[stage] = date
@@ -321,10 +320,10 @@ const handleSubmit = async () => {
   })
 
   const method = isEditMode.value ? 'put' : 'post'
-  const url = isEditMode.value ? `/api/candidates/${editingCandidateId.value}` : `/api/candidates`
+  const url = isEditMode.value ? `/candidates/${editingCandidateId.value}` : `/candidates`
 
   try {
-    await axios[method](url, fd)
+    await api[method](url, fd)
     await Swal.fire({
       icon: 'success',
       title: '✅ Success',
@@ -380,7 +379,7 @@ const deleteCandidate = async id => {
   })
   if (!confirm.isConfirmed) return
 
-  await axios.delete(`/api/candidates/${id}`)
+  await api.delete(`/candidates/${id}`)
   await fetchCandidates()
   await Swal.fire({
     icon: 'success',
@@ -412,6 +411,7 @@ const exportToExcel = () => {
   XLSX.utils.book_append_sheet(wb, ws, 'BlueCollarCandidates')
   XLSX.writeFile(wb, 'bluecollar_candidates.xlsx')
 }
+
 const filterCandidates = () => {
   const search = globalSearch.value?.toLowerCase().trim() || ''
   filteredCandidates.value = candidates.value.filter(c => {
@@ -436,27 +436,27 @@ const filterCandidates = () => {
   })
 }
 
-
 const fetchJobRequisitions = async () => {
-  const res = await axios.get('/api/job-requisitions')
+  const res = await api.get('/job-requisitions')
   jobRequisitionOptions.value = res.data
     .filter(j => j.type === 'Blue Collar' && j.status === 'Vacant')
     .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
 }
 
 const fetchCandidates = async () => {
-  const res = await axios.get('/api/candidates?type=Blue%20Collar')
+  const res = await api.get('/candidates?type=Blue%20Collar')
   candidates.value = res.data
   filterCandidates()
 }
 
 const updateRequisitionDetails = async (jobId) => {
-  const res = await axios.get(`/api/job-requisitions/${jobId}`)
+  const res = await api.get(`/job-requisitions/${jobId}`)
   const job = res.data
   form.value.department = job.departmentId?.name || ''
   form.value.jobTitle = job.jobTitle || ''
   form.value.recruiter = job.recruiter || ''
 }
+
 const resetForm = () => {
   form.value = {
     name: '',
@@ -475,7 +475,6 @@ const resetForm = () => {
   showForm.value = false
 }
 
-
 watch(globalSearch, filterCandidates)
 
 watch(() => route.query, () => {
@@ -490,6 +489,7 @@ onMounted(() => {
   fetchCandidates()
 })
 </script>
+
 
 
 
