@@ -31,6 +31,7 @@
               hide-details
               clearable
               density="compact"
+              variant="outlined"
               class="search-input"
             />
           </v-col>
@@ -47,119 +48,151 @@
 
 
       <!-- Create/Edit Form -->
-      <v-expand-transition>
-        <div v-if="showForm">
-          <v-form @submit.prevent="handleSubmit" class="mt-3 pa-4 rounded-lg elevation-1">
-            <v-row dense>
-              <!-- Department, Job Title, Recruiter -->
-              <v-col cols="12" md="4">
-                <v-select
-                  v-model="form.departmentId"
-                  label="Department"
-                  :items="departments"
-                  item-title="name"
-                  item-value="_id"
-                  outlined dense
-                  required
-                  @update:model-value="onDepartmentChange"
-                  :disabled="isEditing"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-select
-                  v-model="form.jobTitle"
-                  label="Job Title"
-                  :items="jobTitles"
-                  :disabled="!jobTitles.length || isEditing"
-                  outlined dense required
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-select
-                  v-model="form.recruiter"
-                  label="Recruiter"
-                  :items="combinedRecruiters"
-                  outlined dense required
-                  placeholder="Select recruiter"
-                />
-              </v-col>
+<v-expand-transition>
+  <div v-if="showForm">
+    <v-form @submit.prevent="handleSubmit" class="mt-3 pa-4 rounded-lg elevation-1">
+      <v-row dense>
 
-              <!-- Target, Status, Hiring Cost -->
-              <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="form.targetCandidates"
-                  type="number"
-                  label="Target Candidates"
-                  outlined dense required
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="form.status"
-                  label="Status"
-                  :items="statusOptions"
-                  outlined dense required
-                  :class="statusColorClass"
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="form.hiringCost"
-                  label="Hiring Cost ($)"
-                  type="number"
-                  prefix="$"
-                  outlined dense
-                />
-              </v-col>
+        <!-- Department -->
+        <v-col cols="12" md="4">
+          <v-autocomplete
+            v-model="form.departmentId"
+            :items="departments"
+            item-title="name"
+            item-value="_id"
+            label="Select Department"
+            placeholder="Search or select..."
+            variant="outlined"
+            clearable
+            :menu-props="{ maxHeight: '300px' }"
+            @update:model-value="onDepartmentChange"
+          />
+      </v-col>
 
-              <!-- Opening and Start Dates -->
-              <v-col cols="12" md="3">
-                <v-menu v-model="openingDateMenu" :close-on-content-click="false" offset-y>
-                  <template #activator="{ props }">
-                    <v-text-field
-                      v-model="form.openingDate"
-                      label="Opening Date"
-                      readonly
-                      v-bind="props"
-                      prepend-inner-icon="mdi-calendar"
-                      outlined dense
-                    />
-                  </template>
-                  <v-date-picker @update:modelValue="val => {
-                    form.openingDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
-                    openingDateMenu = false
-                  }" />
-                </v-menu>
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
-                  <template #activator="{ props }">
-                    <v-text-field
-                      v-model="form.startDate"
-                      label="Start Date"
-                      readonly
-                      v-bind="props"
-                      prepend-inner-icon="mdi-calendar"
-                      outlined dense
-                    />
-                  </template>
-                  <v-date-picker @update:modelValue="val => {
-                    form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
-                    startDateMenu = false
-                  }" />
-                </v-menu>
-              </v-col>
+        <!-- Job Title -->
+        <v-col cols="12" md="4">
+          <v-autocomplete
+            v-model="form.jobTitle"
+            label="Job Title"
+            :items="jobTitles"
+            item-title=""
+            item-value=""
+            variant="outlined"
+            dense
+            required
+            clearable
+            :disabled="!form.departmentId || isEditing || jobTitles.length === 0"
+            :menu-props="{ maxHeight: '300px' }"
+          />
+        </v-col>
 
-              <!-- Submit Button -->
-              <v-col cols="12" md="3">
-                <v-btn color="success" type="submit" class="mt-2" rounded>
-                  {{ isEditing ? 'Update' : 'Create' }}
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-form>
-        </div>
-      </v-expand-transition>
+        <!-- Recruiter -->
+        <v-col cols="12" md="4">
+          <v-autocomplete
+            v-model="form.recruiter"
+            label="Recruiter"
+            :items="combinedRecruiters"
+            variant="outlined"
+            dense
+            required
+            clearable
+            placeholder="Select recruiter"
+            :menu-props="{ maxHeight: '300px' }"
+          />
+        </v-col>
+
+        <!-- Target, Status, Hiring Cost -->
+        <v-col cols="12" md="3">
+          <v-text-field
+            v-model.number="form.targetCandidates"
+            type="number"
+            label="Target Candidates"
+            variant="outlined"
+            dense
+            required
+          />
+        </v-col>
+
+        <v-col cols="12" md="3">
+          <v-select
+            v-model="form.status"
+            label="Status"
+            :items="statusOptions"
+            item-title="title"
+            item-value="value"
+            variant="outlined"
+            dense
+            required
+            filter
+            :menu-props="{ maxHeight: '300px' }"
+          />
+        </v-col>
+        <!-- :class="statusColorClass" -->
+
+        <v-col cols="12" md="3">
+          <v-text-field
+            v-model.number="form.hiringCost"
+            label="Hiring Cost ($)"
+            type="number"
+            prefix="$"
+            variant="outlined"
+            dense
+          />
+        </v-col>
+
+        <!-- Dates -->
+        <v-col cols="12" md="3">
+          <v-menu v-model="openingDateMenu" :close-on-content-click="false" offset-y>
+            <template #activator="{ props }">
+              <v-text-field
+                v-model="form.openingDate"
+                label="Opening Date"
+                readonly
+                v-bind="props"
+                prepend-inner-icon="mdi-calendar"
+                variant="outlined"
+                dense
+              />
+            </template>
+            <v-date-picker @update:modelValue="val => {
+              form.openingDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+              openingDateMenu = false
+            }" />
+          </v-menu>
+        </v-col>
+
+        <v-col cols="12" md="3">
+          <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
+            <template #activator="{ props }">
+              <v-text-field
+                v-model="form.startDate"
+                label="New Hire Start Date"
+                readonly
+                v-bind="props"
+                prepend-inner-icon="mdi-calendar"
+                variant="outlined"
+                dense
+              />
+            </template>
+            <v-date-picker @update:modelValue="val => {
+              form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+              startDateMenu = false
+            }" />
+          </v-menu>
+        </v-col>
+
+        <!-- Submit Button -->
+        <v-col cols="12" md="3">
+          <v-btn color="success" type="submit" class="mt-2" rounded>
+            {{ isEditing ? 'Update' : 'Create' }}
+          </v-btn>
+        </v-col>
+
+      </v-row>
+    </v-form>
+  </div>
+</v-expand-transition>
+
 
 
       <!-- Requisition Table -->
@@ -186,20 +219,20 @@
               <td>{{ formatDate(item.openingDate) }}</td>
               <td>{{ item.recruiter }}</td>
               <td>
-                <v-btn variant="text" class="px-0" style="text-transform:none" @click="viewStageCandidates(item)">
-                  <span :class="[
-                    'status-badge',
-                    {
-                      'status-vacant': item.status === 'Vacant',
-                      'status-filled': item.status === 'Filled',
-                      'status-cancel': item.status === 'Cancel',
-                      'status-suspended-green': item.status === 'Suspended' && Number(item.offerCount) > 0,
-                      'status-suspended-gray': item.status === 'Suspended' && Number(item.offerCount) === 0
-                    }
-                  ]">
-                    {{ item.status }}
-                  </span>
-                </v-btn>
+                <v-chip
+                  size="small"
+                  class="cursor-pointer"
+                  :class="{
+                    'status-vacant': item.status === 'Vacant',
+                    'status-filled': item.status === 'Filled',
+                    'status-cancel': item.status === 'Cancel',
+                    'status-suspended-green': item.status === 'Suspended' && Number(item.offerCount) > 0,
+                    'status-suspended-gray': item.status === 'Suspended' && Number(item.offerCount) === 0
+                  }"
+                  @click="viewStageCandidates(item)"
+                >
+                  {{ item.status }}
+                </v-chip>
               </td>
               <td>{{ formatDate(item.startDate) }}</td>
               <td>{{ item.hiringCost?.toFixed(2) }}$</td>
@@ -230,6 +263,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { useRouter, useRoute } from 'vue-router'
 
+
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
@@ -244,11 +278,13 @@ const form = ref({
   openingDate: '',
   startDate: ''
 })
-
+const selectedDepartment = ref('')
 const departments = ref([])
+const searchText = ref('')
 const jobTitles = ref([])
 const recruiters = ref([])
 const globalRecruiters = ref([])
+
 
 const combinedRecruiters = computed(() => {
   return [...new Set([...recruiters.value, ...globalRecruiters.value])]
@@ -303,6 +339,7 @@ const fetchDepartments = async () => {
   departments.value = res.data
 }
 
+
 const fetchGlobalRecruiters = async () => {
   const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
@@ -320,14 +357,26 @@ const fetchRequisitions = async () => {
     }))
 }
 
+// const onDepartmentChange = () => {
+//   const selected = departments.value.find(d => d._id === form.value.departmentId)
+//   jobTitles.value = selected?.jobTitles || []
+//   recruiters.value = selected?.recruiters || []
+//   if (!form.value.recruiter && combinedRecruiters.value.length > 0) {
+//     form.value.recruiter = combinedRecruiters.value[0]
+//   }
+// }
+
 const onDepartmentChange = () => {
   const selected = departments.value.find(d => d._id === form.value.departmentId)
   jobTitles.value = selected?.jobTitles || []
   recruiters.value = selected?.recruiters || []
+
+  // Optional: auto-select first recruiter
   if (!form.value.recruiter && combinedRecruiters.value.length > 0) {
     form.value.recruiter = combinedRecruiters.value[0]
   }
 }
+
 
 const exportToExcel = () => {
   if (exportInProgress.value) return
@@ -471,6 +520,7 @@ const resetForm = () => {
   recruiters.value = []
 }
 
+
 const formatDate = val => val ? new Date(val).toLocaleDateString() : ''
 
 const filteredRequisitions = computed(() => {
@@ -511,11 +561,13 @@ const viewStageCandidates = (item) => {
   router.push(base)
 }
 
-onMounted(() => {
-  fetchDepartments()
+onMounted(async () => {
+  await fetchDepartments()
   fetchRequisitions()
   fetchGlobalRecruiters()
 })
+
+
 </script>
 
 
@@ -552,37 +604,40 @@ onMounted(() => {
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
-.status-badge {
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 6px;
-  display: inline-block;
-}
+
+
 .status-vacant {
-  background-color: #e3f2fd;
-  color: #1976d2;
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+  border-radius: 6px;
 }
+
 .status-filled {
-  background-color: #c8e6c9;
-  color: #388e3c;
+  background-color: #c8e6c9 !important;
+  color: #388e3c !important;
+  border-radius: 6px;
 }
+
 .status-cancel {
-  background-color: #ffcdd2;
-  color: #b71c1c;
+  background-color: #ffcdd2 !important;
+  color: #b71c1c !important;
+  border-radius: 6px;
 }
+
 .status-suspended-green {
-  background-color: #eff0af;
-  color: #535322;
+  background-color: #eff0af !important;
+  color: #535322 !important;
+  border-radius: 6px;
 }
 
 .status-suspended-gray {
-  background-color: #f2f2f2;
-  color: #777;
+  background-color: #eceae0 !important;
+  color: #534b4b !important;
+  border-radius: 6px;
 }
-/* .status-suspended-yellow {
-  background-color: #fff8e1;
-  color: #5c4117;
-} */
+
+
+
 
 .table-wrapper {
   max-height: 500px;
@@ -621,6 +676,16 @@ onMounted(() => {
   border-bottom: 1px solid #eee;
   vertical-align: middle;
 }
+
+
+
+.v-chip {
+  box-shadow: none !important;
+  text-transform: none;
+  background-image: none !important;
+}
+
+
 
 .v-btn[icon] {
   width: 28px;

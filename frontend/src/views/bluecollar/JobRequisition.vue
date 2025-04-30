@@ -36,6 +36,7 @@
               prepend-inner-icon="mdi-magnify"
               hide-details
               density="compact"
+              variant="outlined"
               class="search-input"
             />
           </v-col>
@@ -64,6 +65,7 @@
                   :items="['Sewer', 'Non-Sewer']"
                   label="Select Sub-Type"
                   outlined dense
+                  variant="outlined"
                   @update:modelValue="fetchDepartments"
                   :disabled="isEditing"
                   required
@@ -71,33 +73,47 @@
               </v-col>
               <!-- Department, Job Title, Recruiter -->
               <v-col cols="12" md="4">
-                <v-select
+                <v-autocomplete
                   v-model="form.departmentId"
                   label="Department"
                   :items="departments"
                   item-title="name"
                   item-value="_id"
-                  outlined dense
+                  variant="outlined"
+                  dense
+                  clearable
                   required
-                  @update:model-value="onDepartmentChange"
+                  placeholder="Type or select department"
                   :disabled="!subType || isEditing"
+                  @update:model-value="onDepartmentChange"
+                  :menu-props="{ maxHeight: '300px' }"
                 />
               </v-col>
               <v-col cols="12" md="4">
-                <v-select
+                <v-autocomplete
                   v-model="form.jobTitle"
                   label="Job Title"
                   :items="jobTitles"
+                  variant="outlined"
+                  dense
+                  clearable
+                  required
                   :disabled="!jobTitles.length || isEditing"
-                  outlined dense required
+                  placeholder="Type or select job title"
+                  :menu-props="{ maxHeight: '300px' }"
                 />
               </v-col>
               <v-col cols="12" md="4">
-                <v-select
+                <v-autocomplete
                   v-model="form.recruiter"
                   label="Recruiter"
                   :items="combinedRecruiters"
-                  outlined dense required
+                  variant="outlined"
+                  dense
+                  clearable
+                  required
+                  placeholder="Type or select recruiter"
+                  :menu-props="{ maxHeight: '300px' }"
                 />
               </v-col>
               <!-- Target, Status, Hiring Cost -->
@@ -105,6 +121,7 @@
                 <v-text-field
                   v-model.number="form.targetCandidates"
                   type="number"
+                  variant="outlined"
                   label="Target Candidates"
                   outlined dense required
                 />
@@ -113,6 +130,7 @@
                 <v-select
                   v-model="form.status"
                   label="Status"
+                  variant="outlined"
                   :items="statusOptions"
                   outlined dense required
                 />
@@ -123,6 +141,7 @@
                   label="Hiring Cost ($)"
                   type="number"
                   prefix="$"
+                  variant="outlined"
                   outlined dense
                 />
               </v-col>
@@ -135,6 +154,7 @@
                       label="Opening Date"
                       readonly
                       v-bind="props"
+                      variant="outlined"
                       prepend-inner-icon="mdi-calendar"
                       outlined dense
                     />
@@ -151,6 +171,7 @@
                     <v-text-field
                       v-model="form.startDate"
                       label="Start Date"
+                      variant="outlined"
                       readonly
                       v-bind="props"
                       prepend-inner-icon="mdi-calendar"

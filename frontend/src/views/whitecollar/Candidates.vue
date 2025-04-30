@@ -30,10 +30,11 @@
             <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
               <v-text-field
                 v-model="globalSearch"
-                label="Search"
+                label="Search Candidate"
                 prepend-inner-icon="mdi-magnify"
                 hide-details
                 clearable
+                variant="outlined"
                 density="compact"
                 class="search-input"
               />
@@ -55,27 +56,47 @@
             <v-form @submit.prevent="handleSubmit" class="mt-3">
               <v-row dense>
                 <v-col cols="12" md="4">
-                  <v-select
+                  <v-autocomplete
                     v-model="form.jobRequisitionId"
                     :items="jobRequisitionOptions"
                     item-title="displayName"
                     item-value="_id"
                     label="Job Requisition"
+                    clearable
+                    variant="outlined"
+                    placeholder="Type or select job requisition"
                     @update:modelValue="updateRequisitionDetails"
                     required
+                    :menu-props="{ maxHeight: '300px' }"
                   />
                 </v-col>
                 <v-col cols="12" md="3">
-                  <v-text-field v-model="form.name" label="Candidate Name" />
+                  <v-text-field v-model="form.name" variant="outlined" label="Candidate Name" />
                 </v-col>
                 <v-col cols="12" md="3">
-                  <v-select v-model="form.applicationSource" :items="sources" label="Application Source" />
+                  <v-autocomplete
+                    v-model="form.applicationSource"
+                    :items="sources"
+                    label="Application Source"
+                    clearable
+                    variant="outlined"
+                    placeholder="Type or select source"
+                    :menu-props="{ maxHeight: '300px' }"
+                  />
                 </v-col>
                 <v-col cols="12" md="3">
-                  <v-select v-model="form.hireDecision" :items="decisions" label="Hire Decision" />
+                  <v-autocomplete
+                      v-model="form.hireDecision"
+                      :items="decisions"
+                      label="Hire Decision"
+                      variant="outlined"
+                      clearable
+                      placeholder="Type or select decision"
+                      :menu-props="{ maxHeight: '300px' }"
+                    />
                 </v-col>
                 <v-col cols="12" md="6">
-                  <v-file-input multiple label="Upload Documents" @change="handleFileUpload" />
+                  <v-file-input multiple label="Upload Documents" variant="outlined" @change="handleFileUpload" />
                 </v-col>
                 <v-col cols="12">
                   <v-btn color="success" type="submit">Submit</v-btn>
