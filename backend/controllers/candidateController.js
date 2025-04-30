@@ -3,8 +3,6 @@ const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
 const Candidate = require('../models/Candidate')
 
-
-// ✅ Create Candidate
 exports.createCandidate = async (req, res) => {
   const {
     name,
@@ -24,34 +22,47 @@ exports.createCandidate = async (req, res) => {
   try {
     const job = await JobRequisition.findById(jobRequisitionId).populate('departmentId');
     if (!job) return res.status(404).json({ message: '❌ Job requisition not found.' });
-    if (job.status !== 'Vacant') return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
+    if (job.status !== 'Vacant') {
+      return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
+    }
 
     const jobRequisitionCode = job.jobRequisitionId;
     const departmentCode = job.departmentId?.departmentId;
 
+    // 🗓 MMYY (e.g. 0425)
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yy = String(now.getFullYear()).slice(-2);
+    const mmYY = `${mm}${yy}`;
 
-    let counterName, prefix;
+    // 🔠 Prefix: WC / BS / NS
+    let prefix;
     if (job.type === 'White Collar') {
-      counterName = 'white_collar_candidate_counter';
-      prefix = 'W';
+      prefix = 'WC'; // ✅ fix this from 'W' to 'WC'
     } else if (job.type === 'Blue Collar') {
-      counterName = 'blue_collar_candidate_counter';
-      prefix = job.departmentId?.subType === 'Sewer' ? 'BS' : 'BN';
+      prefix = job.departmentId?.subType === 'Sewer' ? 'BS' : 'NS';
     } else {
       return res.status(400).json({ message: '❌ Unknown job type.' });
     }
 
+
+    // 🔁 Counter key by prefix + MMYY
+    const counterKey = `${prefix}-${mmYY}`;
+
+
+    // ✅ Create counter if not exist for this month, otherwise increment
     const counter = await Counter.findOneAndUpdate(
-      { name: counterName },
+      { name: counterKey },
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
 
-    const candidateId = `${prefix}${mm}${yy}${counter.value}`;
+    const number = counter.value; // Do not pad with zeros
+    const candidateId = `${prefix}${mmYY}-${counter.value}`;
 
+
+
+    // ✅ Create Candidate
     const newCandidate = new Candidate({
       candidateId,
       fullName: name,
@@ -69,12 +80,18 @@ exports.createCandidate = async (req, res) => {
     });
 
     await newCandidate.save();
-    res.status(201).json({ message: `✅ Candidate ${name} (ID: ${candidateId}) created.`, candidate: newCandidate });
+
+    res.status(201).json({
+      message: `✅ Candidate ${name} (ID: ${candidateId}) created.`,
+      candidate: newCandidate
+    });
+
   } catch (err) {
     console.error('❌ Error creating candidate:', err);
     res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
 
 // ✅ Get Candidates
 exports.getCandidates = async (req, res) => {

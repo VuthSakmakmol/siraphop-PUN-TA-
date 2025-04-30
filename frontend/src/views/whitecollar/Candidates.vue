@@ -19,7 +19,7 @@
 
       <v-card class="pa-5 mb-4" elevation="5"
         >
-        <v-card-title>
+        <v-card-title class="pa-5 mb-4" elevation="5">
           <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
             <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
               <v-btn class="w-100" color="primary" @click="showForm = !showForm">
@@ -86,14 +86,15 @@
                 </v-col>
                 <v-col cols="12" md="3">
                   <v-autocomplete
-                      v-model="form.hireDecision"
-                      :items="decisions"
-                      label="Hire Decision"
-                      variant="outlined"
-                      clearable
-                      placeholder="Type or select decision"
-                      :menu-props="{ maxHeight: '300px' }"
-                    />
+                    v-model="form.hireDecision"
+                    :items="computedDecisions"
+                    label="Hire Decision"
+                    variant="outlined"
+                    clearable
+                    placeholder="Type or select decision"
+                    :disabled="!!form.progressDates?.Onboard"
+                    :menu-props="{ maxHeight: '300px' }"
+                  />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-file-input multiple label="Upload Documents" variant="outlined" @change="handleFileUpload" />
@@ -133,23 +134,27 @@
                 <td>{{ c.fullName }}</td>
                 <td>{{ c.applicationSource }}</td>
                 <td v-for="label in stageLabels" :key="label">
-                  <v-tooltip v-if="jobIsLocked(c)" location="top">
-                    <template #activator="{ props }">
-                      <v-btn
-                        v-bind="props"
-                        class="stage-btn"
-                        :disabled="true"
-                        :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
-                      >
-                        {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                      </v-btn>
-                    </template>
-                    <span>This job offer is full. Please change Job ID to continue.</span>
-                  </v-tooltip>
+                <!-- 🔒 LOCKED BUTTON -->
+                <v-tooltip v-if="jobIsLocked(c)" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      class="stage-btn"
+                      :disabled="true"
+                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, true)"
+                    >
+                      {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                    </v-btn>
+                  </template>
+                  <span>
+                    This stage is disabled because another candidate has reached Job Offer or beyond for this Job ID.
+                  </span>
+                </v-tooltip>
+                  <!-- ✅ EDITABLE BUTTON -->
                   <v-btn
                     v-else
                     class="stage-btn"
-                    :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
+                    :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
                     @click="selectDate(c, label)"
                   >
                     {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
@@ -185,7 +190,11 @@
           <v-card class="pa-4">
             <v-card-title>Select {{ stageDialog.stage }} Date</v-card-title>
             <v-card-text>
-              <v-date-picker @update:modelValue="val => stageDialog.date = dayjs(val).tz(tz).format('YYYY-MM-DD')" />
+              <v-date-picker
+                :max="currentDate"
+                :model-value="stageDialog.date"
+                @update:modelValue="val => stageDialog.date = dayjs(val).tz(tz).format('YYYY-MM-DD')"
+              />
             </v-card-text>
             <v-card-actions class="justify-end">
               <v-btn text @click="stageDialog.show = false">Cancel</v-btn>
@@ -237,6 +246,7 @@ const globalSearch = ref('')
 
 const currentDate = ref(dayjs().tz(tz).format('YYYY-MM-DD'))
 
+
 const stageCounts = ref({
   Application: 0,
   ManagerReview: 0,
@@ -259,11 +269,16 @@ const isFutureDate = (dateStr) => {
   return dayjs(dateStr).format('YYYY-MM-DD') > currentDate.value
 }
 
-const getStageColorClass = (stage, dateStr) => {
-  if (!dateStr) return 'stage-default'
-  if (isFutureDate(dateStr)) return 'stage-future'
-  return 'stage-bold'
+const getStageColorClass = (stage, dateStr, hireDecision = '', isLocked = false) => {
+  if (['Candidate Refusal', 'Not Hired'].includes(hireDecision)) return 'stage-disabled'; // gray
+  if (isLocked) return 'stage-locked'; // gray for locked due to job being full
+  if (!dateStr) return 'stage-empty';  // red
+  if (isFutureDate(dateStr)) return 'stage-future';
+  return 'stage-filled'; // green
 }
+
+
+
 
 const jobIsLocked = (c) => {
   const isRestricted = !['JobOffer', 'Hired', 'Onboard'].includes(c.progress)
@@ -295,7 +310,26 @@ const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hi
 const currentRoute = computed(() => route.path.split('/')[2])
 const goTo = path => router.push(path)
 const goToCandidateDetail = id => router.push(`/whitecollar/candidates/${id}`)
-const formatDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
+
+
+const formatDate = (val) => {
+  if (!val) return '-'
+  const date = dayjs(val).tz(tz)
+  const day = date.format('DD')
+  const rawMonth = date.format('MMM').toLowerCase()       // 👉 apr
+  const month = rawMonth.charAt(0).toUpperCase() + rawMonth.slice(1)  // 👉 Apr
+  const year = date.format('YY')
+  return `${day}-${month}-${year}`
+}
+
+const computedDecisions = computed(() => {
+  // Always include current value even if it's 'Hired', but block user from selecting 'Hired'
+  return form.value.hireDecision === 'Hired'
+    ? decisions
+    : decisions.filter(d => d !== 'Hired')
+})
+
+
 
 const selectDate = async (c, label) => {
   if (jobIsLocked(c)) {
@@ -316,6 +350,7 @@ const confirmStageDate = async () => {
   stageDialog.value.show = false
   try {
     await api.put(`/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
+    await fetchCandidates()
     const index = candidates.value.findIndex(c => c._id === candidate._id)
     if (index !== -1) {
       candidates.value[index].progressDates[stage] = date
@@ -509,7 +544,16 @@ onMounted(() => {
   fetchDepartments()
   fetchJobRequisitions()
   fetchRecruiters()
+
+  // ✅ Auto-select job requisition if passed from query
+  const preselectedJobId = route.query.jobRequisitionId
+  if (preselectedJobId) {
+    showForm.value = true
+    form.value.jobRequisitionId = preselectedJobId
+    updateRequisitionDetails(preselectedJobId)
+  }
 })
+
 </script>
 
 
@@ -626,5 +670,35 @@ onMounted(() => {
   --v-field-padding-top: 4px;
   --v-field-padding-bottom: 4px;
 }
+
+
+.stage-empty {
+  background-color: #fe3a57 !important; /* light red */
+  color: #1a0606 !important;
+}
+
+.stage-filled {
+  background-color: #66bf3f !important; /* light green */
+  color: #1b5e20 !important;
+  font-weight: 600;
+}
+
+.stage-disabled {
+  background-color: #989851 !important; /* gray */
+  color: #ffffff !important;
+}
+
+.stage-locked {
+  background-color: #575555 !important; /* soft gray */
+  color: #ffffff !important;
+  font-weight: 500;
+}
+
+
+.stage-invalid {
+  background-color: #eb3d4f !important; /* soft pink-red */
+  color: #e60707 !important;
+}
+
 
   </style>

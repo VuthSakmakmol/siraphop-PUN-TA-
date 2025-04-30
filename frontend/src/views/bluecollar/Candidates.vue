@@ -89,13 +89,14 @@
               <v-col cols="12" md="4">
                 <v-autocomplete
                   v-model="form.hireDecision"
-                  :items="decisions"
+                  :items="computedDecisions"
                   label="Hire Decision"
                   clearable
                   variant="outlined"
                   placeholder="Search or select..."
+                  :disabled="!!form.progressDates?.Onboard"
                   :menu-props="{ maxHeight: '300px' }"
-                />              
+                />     
               </v-col>
               <v-col cols="12" md="6">
                 <v-file-input multiple variant="outlined" label="Upload Documents" @change="handleFileUpload" />
@@ -117,88 +118,92 @@
 
       <!-- Candidate Table -->
       <div class="table-wrapper">
-  <table class="sticky-table native-table">
-    <thead>
-      <tr>
-        <th>Candidate ID</th>
-        <th>Job ID</th>
-        <th>Department</th>
-        <th>Job Title</th>
-        <th>Recruiter</th>
-        <th>Name</th>
-        <th>Source</th>
-        <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
-        <th>Final Decision</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        v-for="c in filteredCandidates"
-        :key="c._id"
-        :class="{ 'highlighted-row': c._id === highlightedCandidateId }"
-      >
-        <td>{{ c.candidateId }}</td>
-        <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
-        <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
-        <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
-        <td>{{ c.recruiter }}</td>
-        <td>{{ c.fullName }}</td>
-        <td>{{ c.applicationSource }}</td>
-        <td v-for="label in stageLabels" :key="label">
-          <v-tooltip v-if="jobIsLocked(c, label)" location="top">
-            <template #activator="{ props }">
-              <v-btn
-                v-bind="props"
-                class="stage-btn"
-                :disabled="true"
-                :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
-              >
-                {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
-              </v-btn>
-            </template>
-            <span>This job offer is full. Please change Job ID to continue.</span>
-          </v-tooltip>
-          <v-btn
-            v-else
-            class="stage-btn"
-            :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]])"
-            @click="selectDate(c, label)"
-          >
-            {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
-          </v-btn>
-        </td>
-        <td>{{ c.hireDecision }}</td>
-        <td>
-          <v-menu>
-            <template #activator="{ props }">
-              <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
-            </template>
-            <v-list>
-              <v-list-item @click="editCandidate(c._id)">
-                <v-list-item-title>Edit</v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="goToCandidateDetail(c._id)">
-                <v-list-item-title>Detail</v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="deleteCandidate(c._id)">
-                <v-list-item-title>Delete</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
+        <table class="sticky-table native-table">
+          <thead>
+            <tr>
+              <th>Candidate ID</th>
+              <th>Job ID</th>
+              <th>Department</th>
+              <th>Job Title</th>
+              <th>Recruiter</th>
+              <th>Name</th>
+              <th>Source</th>
+              <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
+              <th>Final Decision</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="c in filteredCandidates"
+              :key="c._id"
+              :class="{ 'highlighted-row': c._id === highlightedCandidateId }"
+            >
+              <td>{{ c.candidateId }}</td>
+              <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
+              <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
+              <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
+              <td>{{ c.recruiter }}</td>
+              <td>{{ c.fullName }}</td>
+              <td>{{ c.applicationSource }}</td>
+              <td v-for="label in stageLabels" :key="label">
+                <v-tooltip v-if="jobIsLocked(c)" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      class="stage-btn"
+                      :disabled="true"
+                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, true)"
+                    >
+                      {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                    </v-btn>
+                  </template>
+                  <span>This stage is disabled because another candidate has reached Job Offer or beyond for this Job ID.</span>
+                </v-tooltip>
 
+                <v-btn
+                  v-else
+                  class="stage-btn"
+                  :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
+                  @click="selectDate(c, label)"
+                >
+                  {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                </v-btn>
+              </td>
+              <td>{{ c.hireDecision }}</td>
+              <td>
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item @click="editCandidate(c._id)">
+                      <v-list-item-title>Edit</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="goToCandidateDetail(c._id)">
+                      <v-list-item-title>Detail</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="deleteCandidate(c._id)">
+                      <v-list-item-title>Delete</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- Stage Dialog -->
       <v-dialog v-model="stageDialog.show" max-width="400">
         <v-card class="pa-4">
           <v-card-title>Select {{ stageDialog.stage }} Date</v-card-title>
           <v-card-text>
-            <v-date-picker @update:modelValue="val => stageDialog.date = dayjs(val).tz(tz).format('YYYY-MM-DD')" />
+            <v-date-picker
+              :max="currentDate"
+              :model-value="stageDialog.date"
+              @update:modelValue="val => stageDialog.date = dayjs(val).tz(tz).format('YYYY-MM-DD')"
+            />
           </v-card-text>
           <v-card-actions class="justify-end">
             <v-btn text @click="stageDialog.show = false">Cancel</v-btn>
@@ -235,6 +240,8 @@ const filteredCandidates = ref([])
 const jobRequisitionOptions = ref([])
 const recruiters = ref([])
 const globalSearch = ref('')
+const currentDate = dayjs().tz(tz).format('YYYY-MM-DD')
+
 
 const jobIdFilter = ref(route.query.jobRequisitionId || null)
 const getStageFilter = val => Array.isArray(val) ? val : (val || '').split(',').filter(Boolean)
@@ -273,14 +280,40 @@ const jobIsLocked = (c, label) => {
   return offerReached && notReachedYet && stageMap[label] !== c.progress
 }
 
-const getStageColorClass = (stage, dateStr) => {
-  if (!dateStr) return 'stage-default'
-  const current = dayjs().tz(tz).format('YYYY-MM-DD')
-  const isFuture = dayjs(dateStr).format('YYYY-MM-DD') > current
-  return isFuture ? 'stage-future' : 'stage-bold'
+const formatDisplayDate = (val) => {
+  if (!val) return '-'
+  const date = dayjs(val).tz(tz)
+  const day = date.format('DD')
+  const month = date.format('MMM')
+  const year = date.format('YY')
+  return `${day}-${month}-${year}`
 }
 
-const formatDisplayDate = val => val ? dayjs(val).tz(tz).format('DD/MM/YYYY') : '-'
+
+const computedDecisions = computed(() => {
+  return form.value.hireDecision === 'Hired'
+    ? decisions
+    : decisions.filter(d => d !== 'Hired')
+})
+
+
+
+
+const isFutureDate = (dateStr) => {
+  if (!dateStr) return false
+  return dayjs(dateStr).tz(tz).format('YYYY-MM-DD') > currentDate.value
+}
+
+const getStageColorClass = (stage, dateStr, hireDecision = '', isLocked = false) => {
+  if (['Candidate Refusal', 'Not Hired'].includes(hireDecision)) return 'stage-disabled'; // gray
+  if (isLocked) return 'stage-locked'; // gray for locked due to job being full
+  if (!dateStr) return 'stage-empty';  // red
+  if (isFutureDate(dateStr)) return 'stage-future';
+  return 'stage-filled'; // green
+}
+
+
+
 
 const selectDate = async (c, label) => {
   if (jobIsLocked(c, label)) {
@@ -308,6 +341,7 @@ const confirmStageDate = async () => {
   stageDialog.value.show = false
   try {
     await api.put(`/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
+    await fetchCandidates()
     const index = candidates.value.findIndex(c => c._id === candidate._id)
     if (index !== -1) {
       candidates.value[index].progressDates[stage] = date
@@ -509,6 +543,13 @@ watch(() => route.query, () => {
 onMounted(() => {
   fetchJobRequisitions()
   fetchCandidates()
+  // ✅ Auto-select job requisition if passed from URL
+  const preselectedJobId = route.query.jobRequisitionId
+  if (preselectedJobId) {
+    showForm.value = true
+    form.value.jobRequisitionId = preselectedJobId
+    updateRequisitionDetails(preselectedJobId)
+  }
 })
 </script>
 
@@ -670,6 +711,40 @@ onMounted(() => {
   --v-field-padding-top: 4px;
   --v-field-padding-bottom: 4px;
 }
+
+
+.stage-empty {
+  background-color: #fe3a57 !important; /* light red */
+  color: #1a0606 !important;
+}
+
+.stage-filled {
+  background-color: #66bf3f !important; /* light green */
+  color: #1b5e20 !important;
+  font-weight: 600;
+}
+
+.stage-disabled {
+  background-color: #f4f46e !important; /* gray */
+  color: #2f2a2a !important;
+}
+
+.stage-locked {
+  background-color: #575555 !important; /* soft gray */
+  color: #ffffff !important;
+  font-weight: 500;
+}
+
+
+.stage-invalid {
+  background-color: #eb3d4f !important; /* soft pink-red */
+  color: #e60707 !important;
+}
+
+
+
+
+
 
 </style>
 
