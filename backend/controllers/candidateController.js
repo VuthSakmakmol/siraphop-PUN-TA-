@@ -4,65 +4,49 @@ const Counter = require('../models/Counter');
 const Candidate = require('../models/Candidate')
 
 exports.createCandidate = async (req, res) => {
-  const {
-    name,
-    recruiter,
-    applicationSource,
-    jobRequisitionId,
-    hireDecision = 'Candidate in Process',
-    applicationDate
-  } = req.body;
-
-  const documents = req.files?.map(file => file.path) || [];
-
-  if (!jobRequisitionId || !mongoose.Types.ObjectId.isValid(jobRequisitionId)) {
-    return res.status(400).json({ message: '❌ Invalid or missing Job Requisition ID.' });
-  }
-
   try {
-    const job = await JobRequisition.findById(jobRequisitionId).populate('departmentId');
-    if (!job) return res.status(404).json({ message: '❌ Job requisition not found.' });
-    if (job.status !== 'Vacant') {
-      return res.status(400).json({ message: `⚠️ Cannot apply. Job requisition is currently ${job.status}.` });
+    const {
+      name,
+      recruiter,
+      applicationSource,
+      jobRequisitionId,
+      hireDecision = 'Candidate in Process',
+      applicationDate
+    } = req.body;
+
+    const documents = req.files?.map(file => file.path) || [];
+
+    if (!jobRequisitionId) {
+      return res.status(400).json({ message: 'Job requisition ID is required' });
     }
+
+    const job = await JobRequisition.findById(jobRequisitionId).populate('departmentId');
+    if (!job) return res.status(404).json({ message: 'Job requisition not found' });
 
     const jobRequisitionCode = job.jobRequisitionId;
     const departmentCode = job.departmentId?.departmentId;
+    const departmentSubType = job.departmentId?.subType || null;
 
-    // 🗓 MMYY (e.g. 0425)
+    // 👇 Prefix for ID
+    let prefix = 'WC';
+    if (job.type === 'Blue Collar') {
+      prefix = departmentSubType === 'Sewer' ? 'BS' : 'NS';
+    }
+
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const yy = String(now.getFullYear()).slice(-2);
     const mmYY = `${mm}${yy}`;
-
-    // 🔠 Prefix: WC / BS / NS
-    let prefix;
-    if (job.type === 'White Collar') {
-      prefix = 'WC'; // ✅ fix this from 'W' to 'WC'
-    } else if (job.type === 'Blue Collar') {
-      prefix = job.departmentId?.subType === 'Sewer' ? 'BS' : 'NS';
-    } else {
-      return res.status(400).json({ message: '❌ Unknown job type.' });
-    }
-
-
-    // 🔁 Counter key by prefix + MMYY
     const counterKey = `${prefix}-${mmYY}`;
 
-
-    // ✅ Create counter if not exist for this month, otherwise increment
     const counter = await Counter.findOneAndUpdate(
       { name: counterKey },
       { $inc: { value: 1 } },
       { new: true, upsert: true }
     );
 
-    const number = counter.value; // Do not pad with zeros
     const candidateId = `${prefix}${mmYY}-${counter.value}`;
 
-
-
-    // ✅ Create Candidate
     const newCandidate = new Candidate({
       candidateId,
       fullName: name,
@@ -71,8 +55,10 @@ exports.createCandidate = async (req, res) => {
       jobRequisitionId,
       jobRequisitionCode,
       departmentCode,
-      hireDecision,
       documents,
+      hireDecision,
+      type: job.type,                   // ✅ Required for filtering
+      subType: departmentSubType,       // ✅ Required for Blue Collar subtypes
       progress: 'Application',
       progressDates: {
         Application: applicationDate ? new Date(applicationDate) : new Date()
@@ -80,34 +66,35 @@ exports.createCandidate = async (req, res) => {
     });
 
     await newCandidate.save();
-
-    res.status(201).json({
-      message: `✅ Candidate ${name} (ID: ${candidateId}) created.`,
-      candidate: newCandidate
-    });
+    res.status(201).json({ message: 'Candidate created', candidate: newCandidate });
 
   } catch (err) {
-    console.error('❌ Error creating candidate:', err);
-    res.status(500).json({ message: '❌ Server error', error: err.message });
+    console.error('❌ Candidate creation failed:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
 
-// ✅ Get Candidates
+// ✅ Get Candidates with type and subType filtering
 exports.getCandidates = async (req, res) => {
   try {
-    const type = req.query.type;
-    const candidates = await Candidate.find().populate({
+    const { type, subType } = req.query;
+
+    const filters = {};
+    if (type) filters.type = type;
+    if (subType) filters.subType = subType;
+
+    const candidates = await Candidate.find(filters).populate({
       path: 'jobRequisitionId',
-      populate: [{ path: 'departmentId', model: 'Department' }]
+      populate: { path: 'departmentId', model: 'Department' }
     });
 
-    const filtered = type ? candidates.filter(c => c.jobRequisitionId?.type === type) : candidates;
-    res.status(200).json(filtered);
+    res.status(200).json(candidates);
   } catch (err) {
     res.status(500).json({ message: '❌ Failed to fetch candidates', error: err.message });
   }
 };
+
 
 // ✅ Get Candidate by ID
 exports.getCandidateById = async (req, res) => {
@@ -358,4 +345,3 @@ exports.getActiveOffersByRequisitionId = async (req, res) => {
     res.status(500).json({ message: '❌ Failed to fetch active offers', error: err.message });
   }
 };
-

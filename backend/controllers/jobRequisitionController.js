@@ -10,15 +10,24 @@ exports.getJobRequisitions = async (req, res) => {
     const filter = {};
     if (req.query.type) filter.type = req.query.type;
 
-    const jobRequisitions = await JobRequisition.find(filter).populate('departmentId');
+    // Fetch all and populate department
+    let jobRequisitions = await JobRequisition.find(filter).populate('departmentId');
 
+    // ✅ FILTER BY SUBTYPE IF PROVIDED
+    if (req.query.subType) {
+      jobRequisitions = jobRequisitions.filter(job =>
+        job.departmentId?.subType === req.query.subType
+      );
+    }
+
+    // ✅ Add offerCount
     const withCounts = await Promise.all(jobRequisitions.map(async (job) => {
-      const offerCount = await getOfferCount(job._id)
+      const offerCount = await getOfferCount(job._id);
       return {
         ...job.toObject(),
         offerCount
-      }
-    }))
+      };
+    }));
 
     res.json(withCounts);
   } catch (err) {

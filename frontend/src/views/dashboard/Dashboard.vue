@@ -1,165 +1,60 @@
 <template>
-  
-  <v-container>
-    <v-card class="pa-6" elevation="4">
-      <v-card-title class="text-h6 font-weight-bold">
-        Recruitment Manager Dashboard<span v-if="filters.type && filters.type !== 'All'"> - {{ filters.type }}</span>
-      </v-card-title>
+  <v-container fluid>
+    <!-- Global Filter -->
+    <v-row class="mb-4">
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="filterType"
+          :items="filterOptions"
+          label="Candidate Type"
+          variant="outlined"
+          hide-details
+        />
+      </v-col>
+    </v-row>
 
-      <v-divider class="my-4" />
-
-      <!-- Filters -->
-      <v-row dense>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.type"
-            :items="['All', 'White Collar', 'Blue Collar']"
-            label="Type"
-            outlined dense
-          />
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.recruiter"
-            :items="recruiters"
-            label="Recruiter"
-            clearable outlined dense
-          />
-        </v-col>
-        
-        <v-col cols="12" md="3">
-          <v-menu v-model="startDateMenu" :close-on-content-click="false">
-            <template #activator="{ props }">
-              <v-text-field v-bind="props" v-model="filters.start" label="Start Date" readonly outlined dense />
-            </template>
-            <v-date-picker @update:modelValue="val => { filters.start = formatDate(val); startDateMenu = false }" />
-          </v-menu>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-menu v-model="endDateMenu" :close-on-content-click="false">
-            <template #activator="{ props }">
-              <v-text-field v-bind="props" v-model="filters.end" label="End Date" readonly outlined dense />
-            </template>
-            <v-date-picker @update:modelValue="val => { filters.end = formatDate(val); endDateMenu = false }" />
-          </v-menu>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-btn color="primary" class="mt-1" @click="applyFilters">Apply Filters</v-btn>
-        </v-col>
-      </v-row>
-
-      <!-- Charts -->
-      <v-divider class="my-6" />
-      <v-row dense>
-        
-        <v-col cols="12" md="4">
-          <SourcePie :data="stats.source || {}" />
-        </v-col>
-        <v-col cols="12" md="4">
-          <FinalDecisionPie :data="stats.decision || {}" />
-        </v-col>
-        <v-col cols="12" md="4">
-          <MonthlyApplicationLine :data="stats.monthly || {}" />
-        </v-col>
-        <v-col cols="12" md="4">
-          <RecruitmentPipelineChart :data="stats.pipeline || {}" />
-        </v-col>
-        <v-col cols="12" md="4">
-          <VacancyKPI :data="kpi" :loading="kpiLoading" />
-        </v-col>
-      </v-row>
-    </v-card>
+    <!-- Source Chart -->
+    <v-row>
+      <v-col cols="12" md="6">
+        <SourcePie :series="sourceData.counts" :labels="sourceData.labels" />
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
-
 <script setup>
-import { ref, onMounted } from 'vue'
-import api from '@/utils/api'
-import dayjs from 'dayjs'
-
-// Components
-import RecruitmentPipelineChart from '@/components/dashboard/RecruitmentPipelineChart.vue'
+import { ref, watch, onMounted } from 'vue'
+import axios from 'axios'
 import SourcePie from '@/components/dashboard/SourcePie.vue'
-import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
-import MonthlyApplicationLine from '@/components/dashboard/MonthlyApplicationLine.vue'
-import VacancyKPI from '@/components/dashboard/VacancyKPI.vue'
 
-// Filters
-const filters = ref({
-  type: 'All',
-  recruiter: null,
-  department: null,
-  jobRequisitionId: null,
-  start: '',
-  end: ''
-})
+const filterType = ref('White Collar')
+const filterOptions = [
+  'White Collar',
+  'Blue Collar - Sewer',
+  'Blue Collar - Non-Sewer'
+]
 
-const recruiters = ref([])
-const departments = ref([])
-const jobRequisitions = ref([])
-const stats = ref({})
-const kpi = ref({})
-const kpiLoading = ref(false)
-
-const startDateMenu = ref(false)
-const endDateMenu = ref(false)
-
-const formatDate = val => val ? dayjs(val).format('YYYY-MM-DD') : ''
-
-// Load filter options
-const fetchFilters = async () => {
-  try {
-    const [r, d, j] = await Promise.all([
-      api.get('/departments/global-recruiters'),
-      api.get('/departments'),
-      api.get('/job-requisitions')
-    ])
-    recruiters.value = r.data.map(x => x.name)
-    departments.value = d.data
-    jobRequisitions.value = j.data
-  } catch (err) {
-    console.error('❌ Failed to load filters', err)
-  }
-}
-
-const fetchDashboardKPI = async () => {
-  try {
-    kpiLoading.value = true
-    const res = await api.get('/dashboard/kpis', { params: filters.value })
-    kpi.value = res.data
-  } catch (err) {
-    console.error('❌ Fetch KPI error:', err)
-  } finally {
-    kpiLoading.value = false
-  }
-}
+const sourceData = ref({ labels: [], counts: [] })
 
 const fetchDashboardStats = async () => {
+  let type = 'White Collar'
+  let subType = null
+
+  if (filterType.value.includes('Blue')) {
+    type = 'Blue Collar'
+    if (filterType.value.includes('Sewer')) subType = 'Sewer'
+    if (filterType.value.includes('Non-Sewer')) subType = 'Non-Sewer'
+  }
+
   try {
-    const res = await api.post('/dashboard/stats', { ...filters.value })
-    stats.value = res.data
+    const res = await axios.post('/api/dashboard/stats', { type, subType })
+    console.log('📦 Backend Response:', res.data)
+    sourceData.value = res.data.sources || { labels: [], counts: [] }
   } catch (err) {
-    console.error('❌ Fetch stats error:', err)
+    console.error('❌ Dashboard fetch error:', err)
   }
 }
 
-const applyFilters = async () => {
-  await fetchDashboardStats()
-  await fetchDashboardKPI()
-}
-
-// Initial load
-onMounted(async () => {
-  await fetchFilters()
-  await applyFilters()
-})
+watch(filterType, fetchDashboardStats, { immediate: true })
+onMounted(fetchDashboardStats)
 </script>
-
-
-<style scoped>
-.v-select,
-.v-text-field {
-  min-width: 100%;
-}
-</style>

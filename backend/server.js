@@ -18,7 +18,7 @@ const app = express();
 // ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── API ROUTES ────────────────────────────────────────────────────────────────
 app.use('/api/auth',             require('./routes/authRoutes'));
@@ -31,14 +31,16 @@ app.use('/api/report',           require('./routes/reportRoutes'));
 
 
 // ─── SERVE FRONTEND ─────────────────────────────────────────────────────────────
+
 const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 
 // ─── SPA FALLBACK ───────────────────────────────────────────────────────────────
 // Option A: regex
+
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
-});
+});  
 
 // Option B (alternate): uncomment instead of the regex above
 // app.use((req, res) => {

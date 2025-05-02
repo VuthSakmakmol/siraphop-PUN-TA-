@@ -42,6 +42,22 @@ const colors = [
   '#ffb74d'  // Not Hired
 ]
 
+// 🧠 Custom center label plugin
+const centerTextPlugin = {
+  id: 'centerText',
+  beforeDraw(chart) {
+    const { width, height, ctx } = chart
+    ctx.save()
+    const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0)
+    ctx.font = 'bold 18px Roboto'
+    ctx.fillStyle = '#333'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(`${total} Total`, width / 2, height / 2)
+    ctx.restore()
+  }
+}
+
 const renderChart = () => {
   if (chartInstance) chartInstance.destroy()
 
@@ -82,9 +98,8 @@ const renderChart = () => {
           }
         }
       }
-
     },
-    plugins: [ChartDataLabels]
+    plugins: [ChartDataLabels, centerTextPlugin]
   })
 }
 
@@ -94,7 +109,7 @@ watch(() => props.data, renderChart, { deep: true })
 
 <style scoped>
 .chart-container {
-  height: 400px; /* ✅ make it large like your application source */
+  height: 400px;
   position: relative;
 }
 </style>
