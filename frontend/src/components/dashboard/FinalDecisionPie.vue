@@ -1,115 +1,121 @@
 <template>
-  <v-card class="pa-4" elevation="3" style="height: 500px;">
-    <v-card-title class="text-h6 font-weight-bold mb-2">Final Decision</v-card-title>
-    <v-divider class="mb-4" />
-    <div class="chart-container">
-      <canvas ref="chartCanvas"></canvas>
-    </div>
+  <v-card class="pa-4" elevation="3">
+    <v-row justify="center">
+      <!-- 🔹 Title + Donut Chart -->
+      <v-col cols="12" class="text-center">
+        <div class="chart-title mb-2">Final Hiring Decisions</div>
+
+        <!-- ✅ ApexCharts donut chart -->
+        <apexchart
+          type="donut"
+          height="300"
+          :options="chartOptions"
+          :series="series"
+        />
+
+        <!-- 🧾 Show message if no data -->
+        <div v-if="!series.length" class="text-caption text-grey mt-2">
+          No decision data.
+        </div>
+      </v-col>
+
+      <!-- 🔸 Custom Legend under the chart -->
+      <v-col cols="12">
+        <div class="legend-wrap">
+          <!-- 🔁 One legend item per label -->
+          <div
+            v-for="(label, index) in labels"
+            :key="index"
+            class="legend-item"
+          >
+            <!-- 🎨 Color box for this slice -->
+            <span
+              class="legend-color"
+              :style="{ backgroundColor: colors[index % colors.length] }"
+            ></span>
+
+            <!-- 🏷 Label + % -->
+            <span class="legend-label">
+              {{ label }} — {{ getPercent(index) }}%
+            </span>
+          </div>
+        </div>
+      </v-col>
+    </v-row>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import {
-  Chart,
-  ArcElement,
-  Tooltip,
-  Legend
-} from 'chart.js'
-import ChartDataLabels from 'chartjs-plugin-datalabels'
-
-Chart.register(ArcElement, Tooltip, Legend, ChartDataLabels)
+// 📦 Props from parent (series = values, labels = text, colors = pie slice colors)
+import { computed } from 'vue'
 
 const props = defineProps({
-  data: {
-    type: Object,
-    default: () => ({
-      'Hired': 0,
-      'Candidate in Process': 0,
-      'Candidate Refusal': 0,
-      'Not Hired': 0
-    })
+  series: { type: Array, default: () => [] },
+  labels: { type: Array, default: () => [] },
+  colors: {
+    type: Array,
+    default: () => [
+      '#00C853', // ✅ Hired - green
+      '#D32F2F', // ❌ Not Hired - red
+      '#FBC02D', // 🤝 Candidate Refused - yellow
+      '#9E9E9E'  // 🔄 In Process - gray
+    ]
   }
 })
 
-const chartCanvas = ref(null)
-let chartInstance = null
+// 🎯 Chart config for ApexCharts
+const chartOptions = computed(() => ({
+  labels: props.labels,
+  chart: {
+    type: 'donut',
+    toolbar: { show: false }
+  },
+  legend: { show: false },
+  dataLabels: {
+    enabled: true,
+    formatter: (val) => `${val.toFixed(0)}%`,
+    style: { fontSize: '12px' }
+  },
+  colors: props.colors
+}))
 
-const colors = [
-  '#66bb6a', // Hired
-  '#42a5f5', // Candidate in Process
-  '#ef5350', // Candidate Refusal
-  '#ffb74d'  // Not Hired
-]
-
-// 🧠 Custom center label plugin
-const centerTextPlugin = {
-  id: 'centerText',
-  beforeDraw(chart) {
-    const { width, height, ctx } = chart
-    ctx.save()
-    const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0)
-    ctx.font = 'bold 18px Roboto'
-    ctx.fillStyle = '#333'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`${total} Total`, width / 2, height / 2)
-    ctx.restore()
-  }
+// 🧮 Calculate percentage for legend item
+const getPercent = (index) => {
+  const total = props.series.reduce((a, b) => a + b, 0)
+  return total ? ((props.series[index] / total) * 100).toFixed(0) : 0
 }
-
-const renderChart = () => {
-  if (chartInstance) chartInstance.destroy()
-
-  const labels = Object.keys(props.data)
-  const values = Object.values(props.data)
-
-  chartInstance = new Chart(chartCanvas.value, {
-    type: 'pie',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: colors
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            boxWidth: 12,
-            font: {
-              size: 12
-            }
-          }
-        },
-        datalabels: {
-          color: '#fff',
-          font: { weight: 'bold', size: 14 },
-          formatter: (val, ctx) => {
-            const data = ctx.chart.data.datasets[0].data
-            const total = data.reduce((sum, val) => sum + val, 0)
-            const percent = total > 0 ? ((val / total) * 100) : 0
-            if (percent === 0) return '' // ✅ Hide if 0%
-            return `${percent.toFixed(1)}%`
-          }
-        }
-      }
-    },
-    plugins: [ChartDataLabels, centerTextPlugin]
-  })
-}
-
-onMounted(renderChart)
-watch(() => props.data, renderChart, { deep: true })
 </script>
 
 <style scoped>
-.chart-container {
-  height: 400px;
-  position: relative;
+/* 🎯 Title styling */
+.chart-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #444;
+}
+
+/* 📦 Legend wrapper: rows of items */
+.legend-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 24px;
+  margin-top: 12px;
+}
+
+/* 🏷 Each legend row */
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #555;
+}
+
+/* 🎨 Colored square for pie color */
+.legend-color {
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 2px;
 }
 </style>
