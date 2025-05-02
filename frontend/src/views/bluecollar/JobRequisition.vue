@@ -170,7 +170,7 @@
                   <template #activator="{ props }">
                     <v-text-field
                       v-model="form.startDate"
-                      label="Start Date"
+                      label="New Hire Start Date"
                       variant="outlined"
                       readonly
                       v-bind="props"
@@ -253,8 +253,10 @@
     </v-card>
   </v-container>
 </template>
+
+
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/utils/api'
 import Swal from 'sweetalert2'
@@ -265,7 +267,7 @@ import timezone from 'dayjs/plugin/timezone'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-const subType = ref(null)
+
 const departments = ref([])
 const jobTitles = ref([])
 const recruiters = ref([])
@@ -281,6 +283,9 @@ const showForm = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 const highlightedCandidateId = ref(route.query.candidateId || null)
+const subType = ref(null)
+const defaultSubType = 'Sewer' // or 'Non-Sewer'
+
 
 const globalSearch = ref('')
 const filteredRequisitions = computed(() => {
@@ -299,11 +304,11 @@ const exportToExcel = () => {
     'Department': j.departmentId?.name || '',
     'Job Title': j.jobTitle,
     'Recruiter': j.recruiter,
-    'Target Candidates': j.targetCandidates,
+    // 'Target Candidates': j.targetCandidates,
     'Hiring Cost': j.hiringCost,
     'Status': j.status,
     'Opening Date': formatDisplayDate(j.openingDate),
-    'Start Date': formatDisplayDate(j.startDate)
+    'New Hire Start Date': formatDisplayDate(j.startDate)
   }))
 
   const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -311,6 +316,7 @@ const exportToExcel = () => {
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Requisitions')
   XLSX.writeFile(workbook, 'bluecollar_job_requisitions.xlsx')
 }
+
 
 const form = ref({
   departmentId: '',
@@ -320,8 +326,10 @@ const form = ref({
   hiringCost: 0,
   status: 'Vacant',
   openingDate: '',
-  startDate: ''
+  startDate: '',
+  subType: ''
 })
+
 
 const openingDateMenu = ref(false)
 const startDateMenu = ref(false)
@@ -362,16 +370,15 @@ const onDepartmentChange = () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await api.get('/job-requisitions')
-  jobRequisitions.value = res.data
-    .filter(j => j.type === 'Blue Collar')
-    .map(j => ({
-      ...j,
-      departmentName: j.departmentId?.name || '—',
-      offerCount: Number(j.offerCount) || 0,
-      onboardCount: Number(j.onboardCount) || 0
-    }))
+  const res = await api.get('/job-requisitions?type=Blue Collar')
+  jobRequisitions.value = res.data.reverse().map(j => ({
+    ...j,
+    departmentName: j.departmentId?.name || '—',
+    offerCount: Number(j.offerCount) || 0,
+    onboardCount: Number(j.onboardCount) || 0
+  }))
 }
+
 
 const goToFilteredCandidates = (job, status) => {
   const base = {
@@ -395,7 +402,7 @@ const goToFilteredCandidates = (job, status) => {
 }
 
 const handleSubmit = async () => {
-  const payload = { ...form.value, type: 'Blue Collar' }
+  const payload = { ...form.value, type: 'Blue Collar', subType: subType.value }
   try {
     if (isEditing.value) {
       await api.put(`/job-requisitions/${editingId.value}`, payload)
@@ -426,12 +433,12 @@ const handleSubmit = async () => {
     })
   }
 }
-
 const editRequisition = (job) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   isEditing.value = true
   editingId.value = job._id
-  subType.value = job.departmentId?.subType || null
+
+  subType.value = job.subType || null
 
   form.value = {
     departmentId: job.departmentId._id || job.departmentId,
@@ -441,12 +448,16 @@ const editRequisition = (job) => {
     hiringCost: job.hiringCost,
     status: job.status,
     openingDate: dayjs(job.openingDate).format('YYYY-MM-DD'),
-    startDate: dayjs(job.startDate).format('YYYY-MM-DD')
+    startDate: dayjs(job.startDate).format('YYYY-MM-DD'),
+    subType: job.subType || ''
   }
 
   fetchDepartments().then(onDepartmentChange)
   showForm.value = true
 }
+
+
+
 
 const deleteRequisition = async (id) => {
   const confirm = await Swal.fire({
@@ -504,12 +515,13 @@ const resetForm = () => {
 
 const toggleForm = () => showForm.value = !showForm.value
 const formatDate = val => dayjs(val).format('YYYY-MM-DD')
-const formatDisplayDate = val => val ? new Date(val).toLocaleDateString() : ''
+const formatDisplayDate = val => val ? dayjs(val).format('D-MMM-YY') : ''
 
 onMounted(() => {
   fetchGlobalRecruiters()
   fetchRequisitions()
 })
+
 </script>
 
 

@@ -501,7 +501,7 @@ const fetchJobRequisitions = async () => {
 
 const fetchCandidates = async () => {
   const res = await api.get('/candidates?type=Blue%20Collar')
-  candidates.value = res.data
+  candidates.value = res.data.reverse()
   filterCandidates()
 }
 

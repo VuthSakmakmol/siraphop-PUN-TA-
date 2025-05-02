@@ -121,6 +121,7 @@
                 <th>Source</th>
                 <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
                 <th>Final Decision</th>
+                <th>Current Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -161,6 +162,12 @@
                   </v-btn>
                 </td>
                 <td>{{ c.hireDecision }}</td>
+                <td>
+                  <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
+                    {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
+                  </span>
+                  <span v-else>-</span>
+                </td>
                 <td>
                   <v-menu>
                     <template #activator="{ props }">
@@ -428,7 +435,7 @@ watch(globalSearch, filterCandidates)
 
 const fetchCandidates = async () => {
   const res = await api.get('/candidates?type=White%20Collar')
-  candidates.value = res.data
+  candidates.value = res.data.reverse()
   filterCandidates()
 
   const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']

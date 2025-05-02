@@ -45,8 +45,16 @@ const props = defineProps({
   colors: {
     type: Array,
     default: () => [
-      '#666666', '#2979FF', '#00C853', '#1976D2',
-      '#81D4FA', '#FFC107', '#F50057', '#7E57C2', '#BDBDBD'
+      '#2979FF', // Vivid Blue
+  '#00C853', // Green
+  '#FFEB3B', // Yellow
+  '#AB47BC', // Violet
+  '#FFC107', // Amber
+  '#F50057', // Pink
+  '#7E57C2', // Purple
+  '#BDBDBD', // Gray
+  '#FF7043', // Deep Orange
+  '#26C6DA', // Cyan
     ]
   }
 })

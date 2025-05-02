@@ -67,9 +67,9 @@
         </v-list-group>
 
         <!-- Reports -->
-        <v-list-item :to="'/reports'" link prepend-icon="mdi-chart-box-outline">
+        <!-- <v-list-item :to="'/reports'" link prepend-icon="mdi-chart-box-outline">
           <v-list-item-title>Reports & Export</v-list-item-title>
-        </v-list-item>
+        </v-list-item> -->
 
         <!-- Roadmap HC -->
         <v-list-item :to="'/roadmap'" link prepend-icon="mdi-map-marker-path">

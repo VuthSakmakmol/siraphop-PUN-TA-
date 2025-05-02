@@ -300,6 +300,8 @@ const showForm = ref(false)
 const exportInProgress = ref(false)
 const router = useRouter()
 const route = useRoute()
+const formatDisplayDate = val => val ? dayjs(val).format('D-MMM-YY') : ''
+
 
 const currentRoute = computed(() => route.path.split('/')[2])
 const goTo = (path) => {
@@ -347,7 +349,7 @@ const fetchGlobalRecruiters = async () => {
 
 const fetchRequisitions = async () => {
   const res = await api.get('/job-requisitions')
-  jobRequisitions.value = res.data
+  jobRequisitions.value = res.data.reverse()
     .filter(j => j.type === 'White Collar')
     .map(j => ({
       ...j,
@@ -521,7 +523,7 @@ const resetForm = () => {
 }
 
 
-const formatDate = val => val ? new Date(val).toLocaleDateString() : ''
+const formatDate = val => val ? dayjs(val).format('D-MMM-YY') : ''
 
 const filteredRequisitions = computed(() => {
   if (!globalSearch.value) return jobRequisitions.value

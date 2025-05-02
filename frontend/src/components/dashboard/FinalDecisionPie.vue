@@ -1,40 +1,40 @@
 <template>
-  <v-card class="pa-4" elevation="3">
+  <v-card class="pa-4 chart-card" elevation="3">
     <v-row justify="center">
-      <!-- 🔹 Title + Donut Chart -->
       <v-col cols="12" class="text-center">
         <div class="chart-title mb-2">Final Hiring Decisions</div>
 
-        <!-- ✅ ApexCharts donut chart -->
-        <apexchart
-          type="donut"
-          height="300"
-          :options="chartOptions"
-          :series="series"
-        />
+        <!-- ✅ Chart always rendered -->
+        <div class="chart-wrapper">
+          <apexchart
+            type="pie"
+            height="300"
+            :options="chartOptions"
+            :series="series"
+          />
 
-        <!-- 🧾 Show message if no data -->
-        <div v-if="!series.length" class="text-caption text-grey mt-2">
-          No decision data.
+          <!-- 🧾 Overlay Message -->
+          <div
+            v-if="series.reduce((a, b) => a + b, 0) === 0"
+            class="empty-overlay"
+          >
+            No decision data available.
+          </div>
         </div>
       </v-col>
 
-      <!-- 🔸 Custom Legend under the chart -->
+      <!-- 🔸 Legend -->
       <v-col cols="12">
         <div class="legend-wrap">
-          <!-- 🔁 One legend item per label -->
           <div
             v-for="(label, index) in labels"
             :key="index"
             class="legend-item"
           >
-            <!-- 🎨 Color box for this slice -->
             <span
               class="legend-color"
               :style="{ backgroundColor: colors[index % colors.length] }"
             ></span>
-
-            <!-- 🏷 Label + % -->
             <span class="legend-label">
               {{ label }} — {{ getPercent(index) }}%
             </span>
@@ -46,7 +46,6 @@
 </template>
 
 <script setup>
-// 📦 Props from parent (series = values, labels = text, colors = pie slice colors)
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -55,19 +54,18 @@ const props = defineProps({
   colors: {
     type: Array,
     default: () => [
-      '#00C853', // ✅ Hired - green
-      '#D32F2F', // ❌ Not Hired - red
-      '#FBC02D', // 🤝 Candidate Refused - yellow
-      '#9E9E9E'  // 🔄 In Process - gray
+      '#2979FF', // Hired
+      '#D32F2F', // Not Hired
+      '#9E9E9E', // In Process
+      '#00C853',// Candidate Refused '#00C853',
     ]
   }
 })
 
-// 🎯 Chart config for ApexCharts
 const chartOptions = computed(() => ({
   labels: props.labels,
   chart: {
-    type: 'donut',
+    type: 'pie',
     toolbar: { show: false }
   },
   legend: { show: false },
@@ -79,7 +77,6 @@ const chartOptions = computed(() => ({
   colors: props.colors
 }))
 
-// 🧮 Calculate percentage for legend item
 const getPercent = (index) => {
   const total = props.series.reduce((a, b) => a + b, 0)
   return total ? ((props.series[index] / total) * 100).toFixed(0) : 0
@@ -87,14 +84,27 @@ const getPercent = (index) => {
 </script>
 
 <style scoped>
-/* 🎯 Title styling */
 .chart-title {
   font-weight: 600;
   font-size: 16px;
   color: #444;
 }
 
-/* 📦 Legend wrapper: rows of items */
+.chart-wrapper {
+  position: relative;
+  min-height: 300px;
+}
+
+.empty-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  color: #888;
+  pointer-events: none;
+}
+
 .legend-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -103,7 +113,6 @@ const getPercent = (index) => {
   margin-top: 12px;
 }
 
-/* 🏷 Each legend row */
 .legend-item {
   display: flex;
   align-items: center;
@@ -111,7 +120,6 @@ const getPercent = (index) => {
   color: #555;
 }
 
-/* 🎨 Colored square for pie color */
 .legend-color {
   width: 12px;
   height: 12px;
