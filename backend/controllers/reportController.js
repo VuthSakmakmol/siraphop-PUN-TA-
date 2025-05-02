@@ -2,18 +2,9 @@ const dayjs = require('dayjs');
 const Roadmap = require('../models/Roadmap');
 const Candidate = require('../models/Candidate');
 
-// Clean Source Names
 const sources = [
-  'FIF',
-  'Banner / Job Announcement Board',
-  'Brochure',
-  'Telegram',
-  'Facebook',
-  'Job Portal',
-  'LinkedIn',
-  'HR Call',
-  'Other',
-  'Agency'
+  'FIF', 'Banner / Job Announcement Board', 'Brochure', 'Telegram', 'Facebook',
+  'Job Portal', 'LinkedIn', 'HR Call', 'Other', 'Agency'
 ];
 
 const stageLabels = {
@@ -30,16 +21,20 @@ const getMonthName = (i) =>
 
 exports.getReport = async (req, res) => {
   try {
-    const { year = new Date().getFullYear(), type = 'White Collar', view = 'month', quarter = null, month = null } =
-      req.method === 'POST' ? req.body : req.query;
+    const {
+      year = new Date().getFullYear(),
+      type = 'White Collar',
+      subType = null,
+      view = 'month',
+      quarter = null,
+      month = null
+    } = req.method === 'POST' ? req.body : req.query;
 
     const months = Array.from({ length: 12 }, (_, i) => getMonthName(i));
-
     let columns = months;
     if (view === 'quarter') columns = ['Q1', 'Q2', 'Q3', 'Q4'];
     if (view === 'year') columns = [String(year)];
 
-    // Fetch Roadmap
     const roadmapData = await Roadmap.find({ year, type });
     const roadmapMap = {};
     months.forEach(month => {
@@ -51,7 +46,6 @@ exports.getReport = async (req, res) => {
       };
     });
 
-    // Fetch Candidates
     const allCandidates = await Candidate.find({}).populate('jobRequisitionId');
 
     const filtered = allCandidates.filter(c => {
@@ -63,28 +57,22 @@ exports.getReport = async (req, res) => {
       const applicationQuarter = Math.floor(applicationMonth / 3) + 1;
 
       const matchesYear = applicationYear === +year;
-      const matchesType = (type === 'All') || (c.jobRequisitionId && c.jobRequisitionId.type === type);
+      const matchesType =
+        (type === 'All') ||
+        (c.jobRequisitionId &&
+          c.jobRequisitionId.type === type &&
+          (type !== 'Blue Collar' || c.jobRequisitionId.subType === subType));
 
       if (!matchesYear || !matchesType) return false;
 
-      if (view === 'quarter' && quarter) {
-        return applicationQuarter === +quarter;
-      }
-      if (view === 'month' && month) {
-        return applicationMonth === +month;
-      }
+      if (view === 'quarter' && quarter) return applicationQuarter === +quarter;
+      if (view === 'month' && month) return applicationMonth === +month;
 
       return true;
     });
 
-    // Prepare blank arrays
-    const initialArray = () => {
-      if (view === 'year') return [0];
-      if (view === 'quarter') return Array(4).fill(0);
-      return Array(12).fill(0);
-    };
+    const initialArray = () => (view === 'year' ? [0] : view === 'quarter' ? Array(4).fill(0) : Array(12).fill(0));
 
-    // Recruitment Pipeline
     const pipelineStages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
     const pipeline = {};
     for (const stage of pipelineStages) pipeline[stage] = initialArray();
@@ -100,7 +88,6 @@ exports.getReport = async (req, res) => {
       }
     }
 
-    // Application Source
     const sourceCounts = {};
     const sourceApplications = initialArray();
     for (const s of sources) sourceCounts[s] = initialArray();
@@ -124,12 +111,11 @@ exports.getReport = async (req, res) => {
     const sourcePercent = {};
     for (const s of sources) {
       sourcePercent[s] = sourceCounts[s].map((count, i) => {
-        const total = sourceApplications[i] || 1; // prevent divide by zero
+        const total = sourceApplications[i] || 1;
         return `${Math.round((count / total) * 100)}%`;
       });
     }
 
-    // Vacancy Stats
     const stats = {
       averageDaysToHire: initialArray(),
       activeVacant: initialArray(),
@@ -139,13 +125,13 @@ exports.getReport = async (req, res) => {
     const hireDates = {};
     for (const c of filtered) {
       const applied = c.progressDates?.Application;
-      const onboard = c.progressDates?.Onboard; // ✅ Change here (use Onboard instead of Hired)
+      const onboard = c.progressDates?.Onboard;
 
       if (applied && onboard) {
         const m = dayjs(onboard).month();
         const idx = getIndex(view, m);
         hireDates[idx] = hireDates[idx] || [];
-        const days = dayjs(onboard).diff(dayjs(applied), 'day'); // ✅ Calculate days to Onboard
+        const days = dayjs(onboard).diff(dayjs(applied), 'day');
         hireDates[idx].push(days);
       }
     }
@@ -155,10 +141,11 @@ exports.getReport = async (req, res) => {
       if (daysArr.length) {
         stats.averageDaysToHire[i] = (daysArr.reduce((a, b) => a + b, 0) / daysArr.length).toFixed(2);
       }
+
       if (view === 'year') {
-        const totalRoadmap = months.reduce((sum, m) => sum + (roadmapMap[m]?.roadmapHC || 0), 0);
-        const totalActual = months.reduce((sum, m) => sum + (roadmapMap[m]?.actualHC || 0), 0);
         const totalTarget = months.reduce((sum, m) => sum + (roadmapMap[m]?.hiringTargetHC || 0), 0);
+        const totalActual = months.reduce((sum, m) => sum + (roadmapMap[m]?.actualHC || 0), 0);
+        const totalRoadmap = months.reduce((sum, m) => sum + (roadmapMap[m]?.roadmapHC || 0), 0);
         stats.activeVacant[i] = totalRoadmap - totalActual;
         stats.fillRate[i] = totalTarget > 0 ? `${Math.round((pipeline.Hired[i] / totalTarget) * 100)}%` : '0%';
       } else if (view === 'quarter') {
@@ -176,7 +163,6 @@ exports.getReport = async (req, res) => {
       }
     }
 
-    // Build Rows
     const rows = [
       { label: '0. Job Requisition', values: [], isHeader: true },
       { label: 'Roadmap HC from planning', values: getCombinedRoadmap('roadmapHC', view, months, roadmapMap) },
@@ -213,7 +199,7 @@ exports.getReport = async (req, res) => {
   }
 };
 
-// 🔥 Helpers
+// 🔧 Helpers
 function getIndex(view, month) {
   if (view === 'year') return 0;
   if (view === 'quarter') return Math.floor(month / 3);
@@ -226,9 +212,7 @@ function getQuarterMonths(qIndex) {
 
 function getCombinedRoadmap(key, view, months, roadmapMap) {
   if (view === 'year') {
-    return [
-      months.reduce((sum, m) => sum + (roadmapMap[m]?.[key] || 0), 0)
-    ];
+    return [months.reduce((sum, m) => sum + (roadmapMap[m]?.[key] || 0), 0)];
   } else if (view === 'quarter') {
     return [0, 1, 2, 3].map(q =>
       getQuarterMonths(q).reduce((sum, m) => sum + (roadmapMap[getMonthName(m)]?.[key] || 0), 0)
