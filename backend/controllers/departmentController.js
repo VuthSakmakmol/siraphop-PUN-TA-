@@ -23,12 +23,13 @@ exports.getAllRecruitersFromDepartments = async (req, res) => {
     const allDepartments = await Department.find();
     const allRecruiters = allDepartments.flatMap(d => d.recruiters || []);
     const unique = [...new Set(allRecruiters)];
-    res.json(unique.map(name => ({ name })));
+    res.json({ recruiters: unique });
   } catch (err) {
     console.error('❌ Global Recruiters Fetch Error:', err);
     res.status(500).json({ message: 'Failed to fetch global recruiters', error: err.message });
   }
 };
+
 
 
 

@@ -1,51 +1,63 @@
-const Candidate = require('../models/Candidate')
-const dayjs = require('dayjs')
+const Candidate = require('../models/Candidate');
+const JobRequisition = require('../models/JobRequisition');
+const dayjs = require('dayjs');
 
-// 📊 POST /api/dashboard/stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const { type, subType, year } = req.body
+    const { type, subType, from, to, recruiter, departmentId, year } = req.body;
 
-    // ─────────────────────────────────────────────
-    // 🔍 Filter for other charts (source, decision, pipeline)
-    const filter = {}
-    if (type) filter.type = type
-    if (subType) filter.subType = subType
+    // 🎯 Candidate filter
+    const filter = {};
+    if (type) filter.type = type;
+    if (subType) filter.subType = subType;
+    if (recruiter) filter.recruiter = recruiter;
 
-    const candidates = await Candidate.find(filter)
+    if (from || to) {
+      filter['progressDates.Application'] = {};
+      if (from) filter['progressDates.Application'].$gte = new Date(from);
+      if (to) filter['progressDates.Application'].$lte = new Date(to);
+    }
 
-    // ─────────────────────────────────────────────
-    // 🟠 Source Breakdown
-    const sourceMap = {}
+    // 🎯 Handle department filter via job requisition
+    if (departmentId) {
+      const relatedRequisitions = await JobRequisition.find({ departmentId }).select('_id');
+      const ids = relatedRequisitions.map(r => r._id);
+      filter.jobRequisitionId = { $in: ids };
+    }
+
+    const candidates = await Candidate.find(filter);
+
+    // ───────────────────────────────────────
+    // 📊 Source Breakdown
+    const sourceMap = {};
     for (const c of candidates) {
-      const source = (c.applicationSource || '').trim()
-      if (!source) continue
-      sourceMap[source] = (sourceMap[source] || 0) + 1
+      const source = (c.applicationSource || '').trim();
+      if (source) sourceMap[source] = (sourceMap[source] || 0) + 1;
     }
     const sources = {
       labels: Object.keys(sourceMap),
       counts: Object.values(sourceMap)
-    }
+    };
 
-    // ─────────────────────────────────────────────
-    // 🟢 Final Decision Breakdown
+    // ───────────────────────────────────────
+    // 📊 Final Decisions
     const decisionMap = {
       Hired: 0,
       'Not Hired': 0,
       'Candidate Refused': 0,
       'Candidate in Process': 0
-    }
+    };
     for (const c of candidates) {
-      const d = (c.hireDecision || 'Candidate in Process').trim()
-      decisionMap[d] = (decisionMap[d] || 0) + 1
+      const decision = c.hireDecision || 'Candidate in Process';
+      decisionMap[decision] = (decisionMap[decision] || 0) + 1;
     }
     const decisions = {
       labels: Object.keys(decisionMap),
       counts: Object.values(decisionMap)
-    }
+    };
 
-    // ─────────────────────────────────────────────
-    // 🔵 Recruitment Pipeline
+    // ───────────────────────────────────────
+    // 📊 Pipeline
     const pipeline = {
       Application: 0,
       ManagerReview: 0,
@@ -53,60 +65,52 @@ exports.getDashboardStats = async (req, res) => {
       JobOffer: 0,
       Hired: 0,
       Onboard: 0
-    }
+    };
     for (const c of candidates) {
-      const p = c.progressDates || {}
-      if (p.Application) pipeline.Application++
-      if (p.ManagerReview) pipeline.ManagerReview++
-      if (p.Interview) pipeline.Interview++
-      if (p.JobOffer) pipeline.JobOffer++
-      if (p.Hired) pipeline.Hired++
-      if (p.Onboard) pipeline.Onboard++
+      const p = c.progressDates || {};
+      if (p.Application) pipeline.Application++;
+      if (p.ManagerReview) pipeline.ManagerReview++;
+      if (p.Interview) pipeline.Interview++;
+      if (p.JobOffer) pipeline.JobOffer++;
+      if (p.Hired) pipeline.Hired++;
+      if (p.Onboard) pipeline.Onboard++;
     }
 
-    // ─────────────────────────────────────────────
-    // 📆 Monthly Applications for selected year only
-    const monthlyMap = {}
-    const allCandidates = await Candidate.find({
+    // ───────────────────────────────────────
+    // 📈 Monthly Applications (independent)
+    const yearQuery = year || new Date().getFullYear();
+    const monthlyMap = {};
+
+    const monthlyCandidates = await Candidate.find({
       'progressDates.Application': {
-        ...(year && {
-          $gte: new Date(`${year}-01-01`),
-          $lte: new Date(`${year}-12-31`)
-        })
+        $gte: new Date(`${yearQuery}-01-01`),
+        $lte: new Date(`${yearQuery}-12-31`)
       }
-    })
+    });
 
-    for (const c of allCandidates) {
-      const d = c.progressDates?.Application
-      if (!d) continue
-
-      const key = dayjs(d).format('MMM') // "Jan", "Feb", etc.
-      monthlyMap[key] = (monthlyMap[key] || 0) + 1
+    for (const c of monthlyCandidates) {
+      const d = c.progressDates?.Application;
+      if (!d) continue;
+      const key = dayjs(d).format('MMM');
+      monthlyMap[key] = (monthlyMap[key] || 0) + 1;
     }
 
-    // Always return all 12 months (fill missing with 0)
-    const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    const labels = []
-    const counts = []
+    const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthly = {
+      labels: monthOrder,
+      counts: monthOrder.map(m => monthlyMap[m] || 0)
+    };
 
-    for (const m of monthOrder) {
-      labels.push(m)
-      counts.push(monthlyMap[m] || 0)
-    }
-
-    const monthly = { labels, counts }
-
-    // ─────────────────────────────────────────────
-    // ✅ Final Response
+    // ✅ Response
     res.status(200).json({
       sources,
       decisions,
       pipeline,
       monthly
-    })
+    });
 
   } catch (err) {
-    console.error('❌ Dashboard stats error:', err)
-    res.status(500).json({ error: 'Failed to load dashboard stats' })
+    console.error('❌ Dashboard stats error:', err);
+    res.status(500).json({ error: 'Failed to load dashboard stats' });
   }
-}
+};

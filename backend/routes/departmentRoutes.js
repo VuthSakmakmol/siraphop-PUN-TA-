@@ -3,6 +3,7 @@ const router = express.Router();
 const departmentController = require('../controllers/departmentController');
 
 // ✅ Global Recruiters (Admin Settings)
+router.get('/all-recruiters', departmentController.getAllRecruitersFromDepartments);
 router.get('/global-recruiters', departmentController.getGlobalRecruiters);
 router.post('/global-recruiter', departmentController.addGlobalRecruiter);
 router.put('/global-recruiters/:id', departmentController.updateGlobalRecruiter);
