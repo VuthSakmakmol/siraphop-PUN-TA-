@@ -5,18 +5,18 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const { type, subType } = req.body
 
-    // 🔍 Build candidate filter
+    // 🔍 Build filter based on type/subType
     const filter = {}
     if (type) filter.type = type
     if (subType) filter.subType = subType
 
-    // 🧑‍💼 Get candidates by type + subtype
+    // 👥 Get filtered candidates
     const candidates = await Candidate.find(filter)
     console.log('👥 Matched Candidates:', candidates.length)
 
-    // ─────────────────────────────────────────────────────────────
-    // 🟠 1. Source Breakdown (applicationSource)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────
+    // 🟠 1. Application Source Breakdown
+    // ──────────────────────────────────────────────
     const sourceMap = {}
     for (const c of candidates) {
       const source = (c.applicationSource || '').trim()
@@ -29,14 +29,14 @@ exports.getDashboardStats = async (req, res) => {
       counts: Object.values(sourceMap)
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 🟢 2. Final Decision Breakdown (hireDecision)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────
+    // 🟢 2. Final Decision Breakdown
+    // ──────────────────────────────────────────────
     const decisionMap = {
       Hired: 0,
       'Not Hired': 0,
       'Candidate Refused': 0,
-      'Candidate in Process': 0 // default if undefined
+      'Candidate in Process': 0
     }
 
     for (const c of candidates) {
@@ -49,11 +49,35 @@ exports.getDashboardStats = async (req, res) => {
       counts: Object.values(decisionMap)
     }
 
-    // ✅ Log and respond
-    console.log('📊 Sources:', sources)
-    console.log('📊 Decisions:', decisions)
+    // ──────────────────────────────────────────────
+    // 🔵 3. Recruitment Pipeline from progressDates
+    // ──────────────────────────────────────────────
+    const pipeline = {
+      Application: 0,
+      ManagerReview: 0,
+      Interview: 0,
+      JobOffer: 0,
+      Hired: 0,
+      Onboard: 0
+    }
 
-    res.status(200).json({ sources, decisions })
+    for (const c of candidates) {
+      const p = c.progressDates || {}  // ✅ Use progressDates
+
+      if (p.Application) pipeline.Application++
+      if (p.ManagerReview) pipeline.ManagerReview++
+      if (p.Interview) pipeline.Interview++
+      if (p.JobOffer) pipeline.JobOffer++
+      if (p.Hired) pipeline.Hired++
+      if (p.Onboard) pipeline.Onboard++
+    }
+
+    // ✅ Final Response
+    res.status(200).json({
+      sources,
+      decisions,
+      pipeline
+    })
 
   } catch (err) {
     console.error('❌ Dashboard stats error:', err)

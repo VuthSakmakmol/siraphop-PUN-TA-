@@ -27,6 +27,10 @@
           :labels="decisionData.labels"
         />
       </v-col>
+
+      <v-col cols="12" md="6">
+        <RecruitmentPipelineChart :pipeline="pipelineData" />
+      </v-col>
     </v-row>
   </v-container>
 </template>
@@ -38,6 +42,9 @@ import axios from 'axios'
 // 🧩 Dashboard Chart Components
 import SourcePie from '@/components/dashboard/SourcePie.vue'
 import FinalDecisionPie from '@/components/dashboard/FinalDecisionPie.vue'
+import RecruitmentPipelineChart from '@/components/dashboard/RecruitmentPipelineChart.vue'
+
+
 
 // 🎛 Filter state
 const filterType = ref('White Collar')
@@ -50,6 +57,9 @@ const filterOptions = [
 // 📊 Chart data containers
 const sourceData = ref({ labels: [], counts: [] })
 const decisionData = ref({ labels: [], counts: [] })
+const pipelineData = ref({})
+
+
 
 // 🌐 Fetch chart data from backend
 const fetchDashboardStats = async () => {
@@ -71,6 +81,10 @@ const fetchDashboardStats = async () => {
 
     // ✅ Final decision pie chart
     decisionData.value = res.data.decisions || { labels: [], counts: [] }
+
+    // Recruitment Pipiline
+    pipelineData.value = res.data.pipeline || {}
+
 
   } catch (err) {
     console.error('❌ Dashboard fetch error:', err)
