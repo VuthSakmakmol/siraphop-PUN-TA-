@@ -8,11 +8,13 @@ const jobRequisitionSchema = new mongoose.Schema({
   targetCandidates: { type: Number, required: true },
   filledCandidates: { type: Number, default: 0 },
   hiringCost: { type: Number, default: 0 },
+
   status: {
     type: String,
     enum: ['Vacant', 'Suspended', 'Filled', 'Cancel'],
     default: 'Vacant'
   },
+
   openingDate: { type: Date, required: true },
   startDate: { type: Date, required: false },
 
@@ -23,14 +25,15 @@ const jobRequisitionSchema = new mongoose.Schema({
     required: true
   },
 
-  // Subtype: Only for Blue Collar
+  // Subtype: Sewer/Non-Sewer for Blue Collar
   subType: {
     type: String,
     enum: ['Sewer', 'Non-Sewer'],
-    default: undefined
+    default: function () {
+      return this.type === 'Blue Collar' ? 'Non-Sewer' : undefined;
+    }
   },
 
-  // For tracking onboarding progress
   onboardCount: { type: Number, default: 0 }
 
 }, { timestamps: true });

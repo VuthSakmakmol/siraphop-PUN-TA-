@@ -9,16 +9,9 @@ exports.getJobRequisitions = async (req, res) => {
   try {
     const filter = {};
     if (req.query.type) filter.type = req.query.type;
+    if (req.query.subType) filter.subType = req.query.subType;
 
-    // Fetch all and populate department
     let jobRequisitions = await JobRequisition.find(filter).populate('departmentId');
-
-    // ✅ FILTER BY SUBTYPE IF PROVIDED
-    if (req.query.subType) {
-      jobRequisitions = jobRequisitions.filter(job =>
-        job.departmentId?.subType === req.query.subType
-      );
-    }
 
     // ✅ Add offerCount
     const withCounts = await Promise.all(jobRequisitions.map(async (job) => {
@@ -35,17 +28,14 @@ exports.getJobRequisitions = async (req, res) => {
   }
 };
 
-
 const getOfferCount = async (jobId) => {
   return await Candidate.countDocuments({
     jobRequisitionId: jobId,
     progress: 'JobOffer',
     hireDecision: { $in: ['Candidate in Process', null] }
-  })
-}
+  });
+};
 
-
-// ✅ Get single job requisition
 exports.getJobRequisitionById = async (req, res) => {
   try {
     const job = await JobRequisition.findById(req.params.id);
@@ -56,7 +46,6 @@ exports.getJobRequisitionById = async (req, res) => {
   }
 };
 
-// ✅ Create job requisitions (multi-row if target > 1)
 exports.createJobRequisition = async (req, res) => {
   try {
     const {
@@ -68,13 +57,14 @@ exports.createJobRequisition = async (req, res) => {
       status,
       openingDate,
       startDate,
-      type
+      type,
+      subType
     } = req.body;
 
-    // Get prefix for counter
-    const prefix = type === 'Blue Collar' ? 'BJR' : 'WJR';
+    // ✅ Ensure subType is set for Blue Collar
+    const resolvedSubType = type === 'Blue Collar' ? (subType || 'Non-Sewer') : undefined;
 
-    // Increment counter
+    const prefix = type === 'Blue Collar' ? 'BJR' : 'WJR';
     const counter = await Counter.findOneAndUpdate(
       { name: `jobRequisition${prefix}` },
       { $inc: { value: 1 } },
@@ -85,7 +75,7 @@ exports.createJobRequisition = async (req, res) => {
     const generatedRequisitions = [];
 
     for (let i = 1; i <= targetCandidates; i++) {
-      const individualId = `${baseJobRequisitionId.replace('-', '')}-${i}`; // BJR4-1 or WJR4-1
+      const individualId = `${baseJobRequisitionId.replace('-', '')}-${i}`;
 
       const newRequisition = new JobRequisition({
         baseJobRequisitionId,
@@ -97,6 +87,7 @@ exports.createJobRequisition = async (req, res) => {
         hiringCost,
         status,
         type,
+        subType: resolvedSubType,
         openingDate,
         startDate
       });
@@ -116,7 +107,6 @@ exports.createJobRequisition = async (req, res) => {
   }
 };
 
-// ✅ Update requisition
 exports.updateJobRequisition = async (req, res) => {
   try {
     const { id } = req.params;
@@ -132,14 +122,12 @@ exports.updateJobRequisition = async (req, res) => {
     const existing = await JobRequisition.findById(id);
     if (!existing) return res.status(404).json({ message: 'Requisition not found' });
 
-    // Apply only editable updates
     existing.recruiter = recruiter;
     existing.targetCandidates = targetCandidates;
     existing.hiringCost = hiringCost;
     existing.status = status;
     existing.openingDate = moment.tz(openingDate, 'Asia/Phnom_Penh');
-    existing.startDate = moment.tz(startDate, 'Asia/Phnom_Penh'); // 🔥 Add this
-
+    existing.startDate = moment.tz(startDate, 'Asia/Phnom_Penh');
 
     await existing.save();
 
@@ -153,8 +141,6 @@ exports.updateJobRequisition = async (req, res) => {
 exports.deleteJobRequisition = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // ✅ 1. Check if any Candidate is linked to this Job Requisition
     const candidateCount = await Candidate.countDocuments({ jobRequisitionId: id });
 
     if (candidateCount > 0) {
@@ -163,7 +149,6 @@ exports.deleteJobRequisition = async (req, res) => {
       });
     }
 
-    // ✅ 2. If safe, proceed to delete
     const job = await JobRequisition.findByIdAndDelete(id);
 
     if (!job) {
@@ -178,8 +163,6 @@ exports.deleteJobRequisition = async (req, res) => {
   }
 };
 
-
-// ✅ Get job titles & recruiters for department
 exports.getJobTitlesAndRecruiters = async (req, res) => {
   try {
     const { departmentId } = req.params;
@@ -195,7 +178,6 @@ exports.getJobTitlesAndRecruiters = async (req, res) => {
   }
 };
 
-// ✅ Auto update counts and status (called from candidateController)
 exports.updateRequisitionCounts = async (jobRequisitionId) => {
   const allCandidates = await Candidate.find({ jobRequisitionId });
 
@@ -228,7 +210,6 @@ exports.updateRequisitionCounts = async (jobRequisitionId) => {
   });
 };
 
-// ✅ Get the one candidate in JobOffer stage for this requisition (used for green Suspended)
 exports.getOfferStageCandidate = async (req, res) => {
   try {
     const candidate = await Candidate.findOne({
@@ -247,4 +228,3 @@ exports.getOfferStageCandidate = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch candidate in offer stage' });
   }
 };
-

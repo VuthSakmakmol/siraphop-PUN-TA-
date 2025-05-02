@@ -1,62 +1,69 @@
-const Candidate = require('../models/Candidate');
-const JobRequisition = require('../models/JobRequisition');
-const dayjs = require('dayjs');
+const Candidate = require('../models/Candidate')
+const JobRequisition = require('../models/JobRequisition')
+const dayjs = require('dayjs')
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    const { type, subType, from, to, recruiter, departmentId, year } = req.body;
+    const { type, subType, from, to, recruiter, departmentId, year } = req.body
 
-    // 🎯 Candidate filter
-    const filter = {};
-    if (type) filter.type = type;
-    if (subType) filter.subType = subType;
-    if (recruiter) filter.recruiter = recruiter;
+    const filter = {}
+    const jobFilter = {}
+
+    if (type) {
+      filter.type = type
+      jobFilter.type = type
+    }
+
+    // ✅ Apply subType only for Blue Collar
+    if (type === 'Blue Collar' && subType) {
+      filter.subType = subType
+      jobFilter.subType = subType
+    }
+
+    if (recruiter) filter.recruiter = recruiter
 
     if (from || to) {
-      filter['progressDates.Application'] = {};
-      if (from) filter['progressDates.Application'].$gte = new Date(from);
-      if (to) filter['progressDates.Application'].$lte = new Date(to);
+      filter['progressDates.Application'] = {}
+      if (from) filter['progressDates.Application'].$gte = new Date(from)
+      if (to) filter['progressDates.Application'].$lte = new Date(to)
     }
 
-    // 🎯 Handle department filter via job requisition
     if (departmentId) {
-      const relatedRequisitions = await JobRequisition.find({ departmentId }).select('_id');
-      const ids = relatedRequisitions.map(r => r._id);
-      filter.jobRequisitionId = { $in: ids };
+      const jobs = await JobRequisition.find({ departmentId }).select('_id')
+      const jobIds = jobs.map(j => j._id)
+      filter.jobRequisitionId = { $in: jobIds }
+      jobFilter.departmentId = departmentId
     }
 
-    const candidates = await Candidate.find(filter);
+    const candidates = await Candidate.find(filter)
 
-    // ───────────────────────────────────────
     // 📊 Source Breakdown
-    const sourceMap = {};
+    const sourceMap = {}
     for (const c of candidates) {
-      const source = (c.applicationSource || '').trim();
-      if (source) sourceMap[source] = (sourceMap[source] || 0) + 1;
+      const source = (c.applicationSource || '').trim()
+      if (source) sourceMap[source] = (sourceMap[source] || 0) + 1
     }
     const sources = {
       labels: Object.keys(sourceMap),
       counts: Object.values(sourceMap)
-    };
+    }
 
-    // ───────────────────────────────────────
     // 📊 Final Decisions
     const decisionMap = {
       Hired: 0,
       'Not Hired': 0,
       'Candidate Refused': 0,
       'Candidate in Process': 0
-    };
+    }
     for (const c of candidates) {
-      const decision = c.hireDecision || 'Candidate in Process';
-      decisionMap[decision] = (decisionMap[decision] || 0) + 1;
+      const decision = c.hireDecision || 'Candidate in Process'
+      decisionMap[decision] = (decisionMap[decision] || 0) + 1
     }
     const decisions = {
       labels: Object.keys(decisionMap),
       counts: Object.values(decisionMap)
-    };
+    }
 
-    // ───────────────────────────────────────
     // 📊 Pipeline
     const pipeline = {
       Application: 0,
@@ -65,52 +72,104 @@ exports.getDashboardStats = async (req, res) => {
       JobOffer: 0,
       Hired: 0,
       Onboard: 0
-    };
+    }
     for (const c of candidates) {
-      const p = c.progressDates || {};
-      if (p.Application) pipeline.Application++;
-      if (p.ManagerReview) pipeline.ManagerReview++;
-      if (p.Interview) pipeline.Interview++;
-      if (p.JobOffer) pipeline.JobOffer++;
-      if (p.Hired) pipeline.Hired++;
-      if (p.Onboard) pipeline.Onboard++;
+      const p = c.progressDates || {}
+      if (p.Application) pipeline.Application++
+      if (p.ManagerReview) pipeline.ManagerReview++
+      if (p.Interview) pipeline.Interview++
+      if (p.JobOffer) pipeline.JobOffer++
+      if (p.Hired) pipeline.Hired++
+      if (p.Onboard) pipeline.Onboard++
     }
 
-    // ───────────────────────────────────────
-    // 📈 Monthly Applications (independent)
-    const yearQuery = year || new Date().getFullYear();
-    const monthlyMap = {};
+    // 📈 Monthly
+    const selectedYear = year || new Date().getFullYear()
+    const monthlyMap = {}
 
     const monthlyCandidates = await Candidate.find({
       'progressDates.Application': {
-        $gte: new Date(`${yearQuery}-01-01`),
-        $lte: new Date(`${yearQuery}-12-31`)
-      }
-    });
+        $gte: new Date(`${selectedYear}-01-01`),
+        $lte: new Date(`${selectedYear}-12-31`)
+      },
+      ...(type && { type }),
+      ...(type === 'Blue Collar' && subType ? { subType } : {})
+    })
 
     for (const c of monthlyCandidates) {
-      const d = c.progressDates?.Application;
-      if (!d) continue;
-      const key = dayjs(d).format('MMM');
-      monthlyMap[key] = (monthlyMap[key] || 0) + 1;
+      const d = c.progressDates?.Application
+      if (!d) continue
+      const key = dayjs(d).format('MMM')
+      monthlyMap[key] = (monthlyMap[key] || 0) + 1
     }
 
-    const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     const monthly = {
       labels: monthOrder,
       counts: monthOrder.map(m => monthlyMap[m] || 0)
-    };
+    }
 
-    // ✅ Response
+    // 📊 KPI Metrics
+    const totalRequisitions = await JobRequisition.countDocuments(jobFilter)
+
+    const filled = await Candidate.countDocuments({
+      ...filter,
+      progress: 'Onboard',
+      hireDecision: 'Hired'
+    })
+
+    const hiringCostAgg = await JobRequisition.aggregate([
+      { $match: jobFilter },
+      { $group: { _id: null, total: { $sum: '$hiringCost' } } }
+    ])
+    const hiringCost = hiringCostAgg[0]?.total || 0
+    const costPerHire = filled > 0 ? (hiringCost / filled).toFixed(2) : 0
+
+    const hiredCandidates = await Candidate.find({
+      ...filter,
+      progress: 'Onboard',
+      hireDecision: 'Hired',
+      'progressDates.Application': { $exists: true },
+      'progressDates.Onboard': { $exists: true }
+    })
+
+    let totalDays = 0
+    for (const c of hiredCandidates) {
+      const start = new Date(c.progressDates.Application)
+      const end = new Date(c.progressDates.Onboard)
+      totalDays += (end - start) / (1000 * 60 * 60 * 24)
+    }
+
+    const averageDaysToHire = hiredCandidates.length > 0
+      ? (totalDays / hiredCandidates.length).toFixed(1)
+      : 0
+
+    const activeVacancies = await JobRequisition.countDocuments({
+      ...jobFilter,
+      status: 'Vacant'
+    })
+
+    const fillRate = totalRequisitions > 0
+      ? ((filled / totalRequisitions) * 100).toFixed(1)
+      : 0
+
     res.status(200).json({
       sources,
       decisions,
       pipeline,
-      monthly
-    });
-
+      monthly,
+      kpi: {
+        totalRequisitions,
+        filled,
+        hiringCost,
+        costPerHire,
+        averageDaysToHire,
+        activeVacancies,
+        fillRate
+      }
+    })
   } catch (err) {
-    console.error('❌ Dashboard stats error:', err);
-    res.status(500).json({ error: 'Failed to load dashboard stats' });
+    console.error('❌ Dashboard stats error:', err)
+    res.status(500).json({ error: 'Failed to load dashboard stats' })
   }
-};
+}
