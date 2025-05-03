@@ -2,12 +2,12 @@
   <v-container>
     <!-- Navbar -->
     <div class="whitecollar-nav">
-      <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
+      <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
         Dashboard
-      </v-btn>
-      <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">
+      </v-btn> -->
+      <!-- <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/bluecollar/departments')">
         Department
-      </v-btn>
+      </v-btn> -->
       <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/bluecollar/requisitions')">
         Job Openings
       </v-btn>
@@ -130,6 +130,7 @@
               <th>Source</th>
               <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
               <th>Final Decision</th>
+              <th>Currrent Start Date</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -171,6 +172,12 @@
                 </v-btn>
               </td>
               <td>{{ c.hireDecision }}</td>
+              <td>
+                <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
+                  {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
+                </span>
+                <span v-else>-</span>
+              </td>
               <td>
                 <v-menu>
                   <template #activator="{ props }">
@@ -446,7 +453,7 @@ const deleteCandidate = async id => {
 }
 
 const exportToExcel = () => {
-  const rows = candidates.value.map(c => ({
+  const rows = filteredCandidates.value.map(c => ({
     'Candidate ID': c.candidateId,
     'Job ID': c.jobRequisitionId?.jobRequisitionId || '',
     'Department': c.jobRequisitionId?.departmentId?.name || '',
@@ -460,6 +467,10 @@ const exportToExcel = () => {
     'Job Offer': formatDisplayDate(c.progressDates?.JobOffer),
     'Hired': formatDisplayDate(c.progressDates?.Hired),
     'Onboard': formatDisplayDate(c.progressDates?.Onboard),
+    'Current Start Date':
+      c.progressDates?.Application && c.progressDates?.Onboard
+        ? `${dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day')} days`
+        : '-',
     'Decision': c.hireDecision
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -467,6 +478,7 @@ const exportToExcel = () => {
   XLSX.utils.book_append_sheet(wb, ws, 'BlueCollarCandidates')
   XLSX.writeFile(wb, 'bluecollar_candidates.xlsx')
 }
+
 
 const filterCandidates = () => {
   const search = globalSearch.value?.toLowerCase().trim() || ''

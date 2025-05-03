@@ -2,12 +2,12 @@
   <v-container>
 
   <div class="whitecollar-nav">
-  <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
+  <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
     Dashboard
-  </v-btn>
-  <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">
+  </v-btn> -->
+  <!-- <v-btn :class="{ 'active-tab': currentRoute === 'departments' }" @click="goTo('/whitecollar/departments')">
     Department
-  </v-btn>
+  </v-btn> -->
   <v-btn :class="{ 'active-tab': currentRoute === 'requisitions' }" @click="goTo('/whitecollar/requisitions')">
     Job Openings
   </v-btn>
