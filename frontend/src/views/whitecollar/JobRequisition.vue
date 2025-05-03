@@ -161,25 +161,26 @@
           </v-menu>
         </v-col>
 
-        <v-col cols="12" md="3">
-          <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
-            <template #activator="{ props }">
-              <v-text-field
-                v-model="form.startDate"
-                label="New Hire Start Date"
-                readonly
-                v-bind="props"
-                prepend-inner-icon="mdi-calendar"
-                variant="outlined"
-                dense
-              />
-            </template>
-            <v-date-picker @update:modelValue="val => {
-              form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
-              startDateMenu = false
-            }" />
-          </v-menu>
-        </v-col>
+        <v-col cols="12" md="3" v-if="isEditing">
+  <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
+    <template #activator="{ props }">
+      <v-text-field
+        v-model="form.startDate"
+        label="New Hire Start Date"
+        readonly
+        v-bind="props"
+        prepend-inner-icon="mdi-calendar"
+        variant="outlined"
+        dense
+      />
+    </template>
+    <v-date-picker @update:modelValue="val => {
+      form.startDate = dayjs(val).tz('Asia/Phnom_Penh').format('YYYY-MM-DD');
+      startDateMenu = false
+    }" />
+  </v-menu>
+</v-col>
+
 
         <!-- Submit Button -->
         <v-col cols="12" md="3">

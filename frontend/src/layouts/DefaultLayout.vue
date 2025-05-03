@@ -6,75 +6,84 @@
         <!-- Brand -->
         <v-list-item class="mb-2">
           <div>
-            <div class="text-h6 font-weight-bold">Trax - TA</div>
-            <div class="text-caption">Admin Panel</div>
+            <div class="text-h6 font-weight-bold">HR</div>
+            <div class="text-caption">TA</div>
           </div>
         </v-list-item>
 
         <v-divider />
 
-        <!-- Dashboard -->
-        <v-list-item :to="'/dashboard'" link prepend-icon="mdi-view-dashboard">
-          <v-list-item-title>Dashboard</v-list-item-title>
-        </v-list-item>
+        
 
-        <!-- Departments Dropdown -->
-        <v-list-group v-model="deptGroup" prepend-icon="mdi-office-building">
-          <template #activator="{ props }">
-            <v-list-item v-bind="props">
-              <v-list-item-title>Preference</v-list-item-title>
-            </v-list-item>
-          </template>
+        <!-- ✅ Cambodia Dropdown (with right margin inside) -->
+<v-list-group v-model="cambodiaGroup">
+  <template #activator="{ props }">
+    <v-list-item v-bind="props">
+      <v-list-item-title>Cambodia</v-list-item-title>
+    </v-list-item>
+  </template>
 
-          <v-list-item :to="'/whitecollar/departments'" link>
-            <v-list-item-title>White Collar</v-list-item-title>
-          </v-list-item>
-          <v-list-item :to="'/bluecollar/departments'" link>
-            <v-list-item-title>Blue Collar</v-list-item-title>
-          </v-list-item>
-        </v-list-group>
+  <!-- Dashboard -->
+  <v-list-item :to="'/dashboard'" link class="">
+    <v-list-item-title>Dashboard</v-list-item-title>
+  </v-list-item>
 
-        <!-- Requisitions Dropdown -->
-        <v-list-group v-model="requisitionGroup" prepend-icon="mdi-briefcase">
-          <template #activator="{ props }">
-            <v-list-item v-bind="props">
-              <v-list-item-title>Job Openings</v-list-item-title>
-            </v-list-item>
-          </template>
+  <!-- Requisitions Dropdown -->
+  <v-list-group v-model="requisitionGroup" class="">
+    <template #activator="{ props }">
+      <v-list-item v-bind="props">
+        <v-list-item-title>Job Openings</v-list-item-title>
+      </v-list-item>
+    </template>
 
-          <v-list-item :to="'/whitecollar/requisitions'" link>
-            <v-list-item-title>White Collar</v-list-item-title>
-          </v-list-item>
-          <v-list-item :to="'/bluecollar/requisitions'" link>
-            <v-list-item-title>Blue Collar</v-list-item-title>
-          </v-list-item>
-        </v-list-group>
+    <v-list-item :to="'/whitecollar/requisitions'" link>
+      <v-list-item-title>White Collar</v-list-item-title>
+    </v-list-item>
+    <v-list-item :to="'/bluecollar/requisitions'" link>
+      <v-list-item-title>Blue Collar</v-list-item-title>
+    </v-list-item>
+  </v-list-group>
 
-        <!-- Candidates Dropdown -->
-        <v-list-group v-model="candidateGroup" prepend-icon="mdi-account-group">
-          <template #activator="{ props }">
-            <v-list-item v-bind="props">
-              <v-list-item-title>Candidates</v-list-item-title>
-            </v-list-item>
-          </template>
+  <!-- Candidates Dropdown -->
+  <v-list-group v-model="candidateGroup" class="">
+    <template #activator="{ props }">
+      <v-list-item v-bind="props">
+        <v-list-item-title>Candidates</v-list-item-title>
+      </v-list-item>
+    </template>
 
-          <v-list-item :to="'/whitecollar/candidates'" link>
-            <v-list-item-title>White Collar</v-list-item-title>
-          </v-list-item>
-          <v-list-item :to="'/bluecollar/candidates'" link>
-            <v-list-item-title>Blue Collar</v-list-item-title>
-          </v-list-item>
-        </v-list-group>
+    <v-list-item :to="'/whitecollar/candidates'" link>
+      <v-list-item-title>White Collar</v-list-item-title>
+    </v-list-item>
+    <v-list-item :to="'/bluecollar/candidates'" link>
+      <v-list-item-title>Blue Collar</v-list-item-title>
+    </v-list-item>
+  </v-list-group>
 
-        <!-- Reports -->
-        <!-- <v-list-item :to="'/reports'" link prepend-icon="mdi-chart-box-outline">
-          <v-list-item-title>Reports & Export</v-list-item-title>
-        </v-list-item> -->
+  <!-- Data Entry -->
+  <v-list-group v-model="deptGroup" class="">
+    <template #activator="{ props }">
+      <v-list-item v-bind="props">
+        <v-list-item-title>Data Entry</v-list-item-title>
+      </v-list-item>
+    </template>
 
-        <!-- Roadmap HC -->
-        <v-list-item :to="'/roadmap'" link prepend-icon="mdi-map-marker-path">
-          <v-list-item-title>Roadmap HC</v-list-item-title>
-        </v-list-item>
+    <v-list-item :to="'/whitecollar/departments'" link>
+      <v-list-item-title>White Collar</v-list-item-title>
+    </v-list-item>
+
+    <v-list-item :to="'/bluecollar/departments'" link>
+      <v-list-item-title>Blue Collar</v-list-item-title>
+    </v-list-item>
+
+    <!-- ✅ Roadmap HC inside Data Entry -->
+    <v-list-item :to="'/roadmap'" link>
+      <v-list-item-title>Target Setting</v-list-item-title>
+    </v-list-item>
+  </v-list-group>
+</v-list-group>
+
+
       </v-list>
     </v-navigation-drawer>
 

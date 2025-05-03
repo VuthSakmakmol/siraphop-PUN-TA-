@@ -1,7 +1,7 @@
 <template>
   <v-card class="pa-4" elevation="3">
     <v-card-title class="text-h6 font-weight-bold mb-2">
-      <v-icon color="primary" start>mdi-clipboard-text</v-icon>
+      <v-icon color="primary" start>mdi-clipboard-text</v-icon>Vacancies Staticstics -bcrypt
       {{ typeLabel || 'Vacancy KPI' }}
     </v-card-title>
     <v-divider class="mb-4" />
@@ -30,6 +30,7 @@
       <!-- Fill Rate Circle -->
       <v-row class="mt-4" justify="center">
         <div class="fillrate-circle-container">
+          <div class="text-caption text-center mt-1">Filled Rate</div>
           <svg viewBox="0 0 36 36" class="circular-chart">
             <path
               class="circle-bg"
@@ -46,7 +47,7 @@
             />
             <text x="18" y="20.35" class="percentage">{{ fillRate }}%</text>
           </svg>
-          <div class="text-caption text-center mt-1">Filled Rate</div>
+          
         </div>
       </v-row>
     </template>

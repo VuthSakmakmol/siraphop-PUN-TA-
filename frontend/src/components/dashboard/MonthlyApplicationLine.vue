@@ -1,9 +1,9 @@
 <template>
   <v-card class="pa-4" elevation="3">
     <!-- 🏷️ Title + Year Filter -->
-    <v-row class="mb-2" align="center">
+    <v-row class="mb-2" align-center="center">
       <v-col cols="6">
-        <div class="chart-title">Monthly Applications</div>
+        <div class="chart-title">Number of Applications by Month</div>
       </v-col>
       <v-col cols="6">
         <v-select

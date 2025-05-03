@@ -165,7 +165,7 @@
                   }" />
                 </v-menu>
               </v-col>
-              <v-col cols="12" md="3">
+              <v-col cols="12" md="3" v-if="isEditing">
                 <v-menu v-model="startDateMenu" :close-on-content-click="false" offset-y>
                   <template #activator="{ props }">
                     <v-text-field
@@ -184,6 +184,7 @@
                   }" />
                 </v-menu>
               </v-col>
+
               <!-- Submit Button -->
               <v-col cols="12" md="3">
                 <v-btn color="success" type="submit" class="mt-2" rounded>
@@ -196,60 +197,58 @@
       </v-expand-transition>
       <!-- Job Requisition Table -->
       <v-divider class="my-4" />
-<div class="job-table-wrapper">
-  <table class="job-sticky-table">
-    <thead>
-      <tr>
-        <th>Job ID</th>
-        <th>Department</th>
-        <th>Job Title</th>
-        <th>Opening Date</th>
-        <th>Recruiter</th>
-        <th>Status</th>
-        <th>New Hire Start Date</th>
-        <th>Hiring Cost</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="job in filteredRequisitions" :key="job._id">
-        <td>{{ job.jobRequisitionId }}</td>
-        <td>{{ job.departmentId?.name }}</td>
-        <td>{{ job.jobTitle }}</td>
-        <td>{{ formatDisplayDate(job.openingDate) }}</td>
-        <td>{{ job.recruiter }}</td>
-        <td>
-          <v-chip
-            size="small"
-            class="cursor-pointer"
-            :class="{
-              'status-vacant': job.status === 'Vacant',
-              'status-filled': job.status === 'Filled',
-              'status-cancel': job.status === 'Cancel',
-              'status-suspended-green': job.status === 'Suspended' && job.offerCount > 0,
-              'status-suspended-gray': job.status === 'Suspended' && job.offerCount === 0
-            }"
-            @click="goToFilteredCandidates(job, job.status)"
-          >
-            {{ job.status }}
-          </v-chip>
-        </td>
-        <td>{{ formatDisplayDate(job.startDate) }}</td>
-        <td>{{ job.hiringCost?.toFixed(2) }}$</td>
-        <td>
-          <v-btn icon size="x-small" color="blue" @click="editRequisition(job)">
-            <v-icon>mdi-pencil</v-icon>
-          </v-btn>
-          <v-btn icon size="x-small" color="red" @click="deleteRequisition(job._id)">
-            <v-icon>mdi-delete</v-icon>
-          </v-btn>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-
+        <div class="job-table-wrapper">
+          <table class="job-sticky-table">
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Department</th>
+                <th>Job Title</th>
+                <th>Opening Date</th>
+                <th>Recruiter</th>
+                <th>Status</th>
+                <th>New Hire Start Date</th>
+                <th>Hiring Cost</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="job in filteredRequisitions" :key="job._id">
+                <td>{{ job.jobRequisitionId }}</td>
+                <td>{{ job.departmentId?.name }}</td>
+                <td>{{ job.jobTitle }}</td>
+                <td>{{ formatDisplayDate(job.openingDate) }}</td>
+                <td>{{ job.recruiter }}</td>
+                <td>
+                  <v-chip
+                    size="small"
+                    class="cursor-pointer"
+                    :class="{
+                      'status-vacant': job.status === 'Vacant',
+                      'status-filled': job.status === 'Filled',
+                      'status-cancel': job.status === 'Cancel',
+                      'status-suspended-green': job.status === 'Suspended' && job.offerCount > 0,
+                      'status-suspended-gray': job.status === 'Suspended' && job.offerCount === 0
+                    }"
+                    @click="goToFilteredCandidates(job, job.status)"
+                  >
+                    {{ job.status }}
+                  </v-chip>
+                </td>
+                <td>{{ formatDisplayDate(job.startDate) }}</td>
+                <td>{{ job.hiringCost?.toFixed(2) }}$</td>
+                <td>
+                  <v-btn icon size="x-small" color="blue" @click="editRequisition(job)">
+                    <v-icon>mdi-pencil</v-icon>
+                  </v-btn>
+                  <v-btn icon size="x-small" color="red" @click="deleteRequisition(job._id)">
+                    <v-icon>mdi-delete</v-icon>
+                  </v-btn>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
     </v-card>
   </v-container>
 </template>

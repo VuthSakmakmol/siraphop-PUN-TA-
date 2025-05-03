@@ -14,6 +14,22 @@
       <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/bluecollar/candidates')">
         Candidates
       </v-btn>
+      <div class="subtype-filter">
+      <v-btn
+        :color="activeSubType === 'Sewer' ? 'primary' : 'grey'"
+        class="mr-2"
+        @click="loadCandidatesBySubType('Sewer')"
+      >
+        Show Sewer
+      </v-btn>
+      <v-btn
+        :color="activeSubType === 'Non-Sewer' ? 'primary' : 'grey'"
+        @click="loadCandidatesBySubType('Non-Sewer')"
+      >
+        Show Non-Sewer
+      </v-btn>
+    </div>
+
     </div>
 
     <v-card class="pa-5 mb-4" elevation="5">
@@ -241,6 +257,7 @@ const route = useRoute()
 const showForm = ref(false)
 const isEditMode = ref(false)
 const editingCandidateId = ref(null)
+const activeSubType = ref(null)
 
 const candidates = ref([])
 const filteredCandidates = ref([])
@@ -294,6 +311,22 @@ const formatDisplayDate = (val) => {
   const month = date.format('MMM')
   const year = date.format('YY')
   return `${day}-${month}-${year}`
+}
+
+const loadCandidatesBySubType = async (subType) => {
+  activeSubType.value = subType
+  try {
+    const res = await api.get(`/candidates?type=Blue%20Collar&subType=${subType}`)
+    candidates.value = res.data.reverse()
+    filterCandidates()
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Failed to Load',
+      text: `Could not load ${subType} candidates.`,
+      allowEnterKey: true
+    })
+  }
 }
 
 
