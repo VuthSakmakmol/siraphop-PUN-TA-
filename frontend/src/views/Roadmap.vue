@@ -1,14 +1,12 @@
 <template>
   <v-container>
-    <!-- Title + Create Button -->
-    <v-row class="mb-4" align-center="center" justify="space-between">
+    <!-- Title + Add Button -->
+    <v-row class="mb-4" align="center" justify="space-between">
       <v-col cols="auto">
         <h2 class="text-h6 font-weight-bold">Roadmap HC Management</h2>
       </v-col>
       <v-col cols="auto">
-        <v-btn color="primary" @click="openCreateDialog">
-          Add New
-        </v-btn>
+        <v-btn color="primary" @click="openCreateDialog">Add New</v-btn>
       </v-col>
     </v-row>
 
@@ -18,7 +16,7 @@
         <v-select v-model="filterYear" :items="yearOptions" label="Filter by Year" clearable />
       </v-col>
       <v-col cols="12" md="4">
-        <v-select v-model="filterType" :items="['White Collar', 'Blue Collar']" label="Filter by Type" clearable />
+        <v-select v-model="filterType" :items="typeOptions" label="Filter by Type" clearable />
       </v-col>
       <v-col cols="12" md="4">
         <v-select v-model="filterMonth" :items="monthOptions" label="Filter by Month" clearable />
@@ -46,7 +44,7 @@
           <tr v-for="item in roadmaps" :key="item._id">
             <td>{{ item.year }}</td>
             <td>{{ item.month }}</td>
-            <td>{{ item.type }}</td>
+            <td>{{ formatType(item.type, item.subType) }}</td>
             <td>{{ item.roadmapHC }}</td>
             <td>{{ item.actualHC }}</td>
             <td>{{ item.hiringTargetHC }}</td>
@@ -76,6 +74,7 @@
               <v-col cols="12" sm="6">
                 <v-select v-model="form.year" :items="yearOptions" label="Year" required />
               </v-col>
+
               <v-col cols="12">
                 <div class="text-subtitle-2 font-weight-bold mb-2">Select Months</div>
                 <v-row>
@@ -84,9 +83,11 @@
                   </v-col>
                 </v-row>
               </v-col>
+
               <v-col cols="12" sm="6">
-                <v-select v-model="form.type" :items="['White Collar', 'Blue Collar']" label="Type" required />
+                <v-select v-model="form.type" :items="typeOptions" label="Type" required />
               </v-col>
+
               <v-col cols="12" sm="6">
                 <v-text-field v-model="form.roadmapHC" type="number" label="Roadmap HC" required />
               </v-col>
@@ -133,8 +134,15 @@ const form = ref({
   type: ''
 })
 
+const typeOptions = ['White Collar', 'Blue Collar - Sewer', 'Blue Collar - Non-Sewer']
 const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 2 + i)
 const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const formatType = (type, subType) => {
+  if (type === 'White Collar') return 'White Collar'
+  if (type === 'Blue Collar' && subType) return `Blue Collar - ${subType}`
+  return type
+}
 
 const fetchRoadmaps = async () => {
   try {
@@ -159,7 +167,11 @@ const openCreateDialog = () => {
 }
 
 const editRoadmap = (item) => {
-  form.value = { ...item, months: [item.month] }
+  form.value = {
+    ...item,
+    months: [item.month],
+    type: formatType(item.type, item.subType)
+  }
   selectedId.value = item._id
   editMode.value = true
   dialog.value = true
@@ -170,7 +182,7 @@ const saveRoadmap = async () => {
     if (editMode.value) {
       await api.put(`/roadmap/${selectedId.value}`, {
         ...form.value,
-        month: form.value.months[0] // edit only single month
+        month: form.value.months[0]
       })
       Swal.fire('Success', 'Roadmap updated successfully', 'success')
     } else {
@@ -230,19 +242,16 @@ onMounted(fetchRoadmaps)
   overflow-x: auto;
   width: 100%;
 }
-
 .roadmap-table-wrapper table {
   min-width: 1000px;
   white-space: nowrap;
 }
-
 .action-btn-group {
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
   align-items: center;
 }
-
 .roadmap-table-wrapper td,
 .roadmap-table-wrapper th {
   white-space: nowrap;

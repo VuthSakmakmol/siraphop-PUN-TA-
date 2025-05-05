@@ -151,6 +151,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const drawer = ref(false)
+const cambodiaGroup = ref(true)
 const deptGroup = ref(true)
 const requisitionGroup = ref(true)
 const candidateGroup = ref(true)

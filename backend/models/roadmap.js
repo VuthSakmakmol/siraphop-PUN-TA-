@@ -1,12 +1,41 @@
 const mongoose = require('mongoose');
 
-const RoadmapSchema = new mongoose.Schema({
-  year: { type: Number, required: true },
-  month: { type: String, required: true },
-  roadmapHC: { type: Number, required: true },
-  actualHC: { type: Number, required: true },
-  hiringTargetHC: { type: Number, required: true },
-  type: { type: String, enum: ['White Collar', 'Blue Collar'], required: true }
-}, { timestamps: true });
+const roadmapSchema = new mongoose.Schema({
+  year: {
+    type: Number,
+    required: true
+  },
+  month: {
+    type: String,
+    required: true
+  },
 
-module.exports = mongoose.model('Roadmap', RoadmapSchema);
+  // Main category
+  type: {
+    type: String,
+    enum: ['White Collar', 'Blue Collar'],
+    required: true
+  },
+
+  // Only applicable if type is Blue Collar
+  subType: {
+    type: String,
+    enum: ['Sewer', 'Non-Sewer'],
+    default: null
+  },
+
+  roadmapHC: {
+    type: Number,
+    required: true
+  },
+  actualHC: {
+    type: Number,
+    required: true
+  },
+  hiringTargetHC: {
+    type: Number,
+    required: true
+  }
+});
+
+module.exports = mongoose.model('Roadmap', roadmapSchema);

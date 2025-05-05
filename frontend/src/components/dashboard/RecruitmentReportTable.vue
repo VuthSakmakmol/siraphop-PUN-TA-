@@ -43,8 +43,10 @@ import api from '@/utils/api'
 const props = defineProps({
   type: String,
   subType: String,
-  start: String,
-  end: String
+  view: String,        // 'month' | 'quarter' | 'year'
+  year: Number,
+  quarter: Number,
+  month: Number
 })
 
 const reportData = ref([])
@@ -54,11 +56,12 @@ const fetchReport = async () => {
   try {
     const res = await api.get('/report', {
       params: {
-        view: 'month',
         type: props.type,
         subType: props.subType,
-        start: props.start,
-        end: props.end
+        view: props.view,
+        year: props.year,
+        quarter: props.quarter,
+        month: props.month
       }
     })
     reportData.value = res.data.rows
@@ -68,7 +71,11 @@ const fetchReport = async () => {
   }
 }
 
-watch(() => [props.type, props.subType, props.start, props.end], fetchReport, { immediate: true })
+watch(
+  () => [props.type, props.subType, props.view, props.year, props.quarter, props.month],
+  fetchReport,
+  { immediate: true }
+)
 
 const getBarClass = (percent) => {
   const value = parseFloat(percent)

@@ -23,9 +23,8 @@ import Dashboard from '@/views/dashboard/Dashboard.vue'
 import Reports from '@/views/Reports.vue'
 
 const routes = [
+  // 🔐 Auth
   { path: '/', redirect: '/login' },
-
-  // 🔐 Public
   { path: '/login', name: 'Login', component: Login },
 
   // 📊 Dashboards
@@ -47,16 +46,12 @@ const routes = [
   { path: '/bluecollar/candidates', name: 'BlueCandidates', component: BlueCandidates, meta: { requiresAuth: true } },
   { path: '/bluecollar/candidates/:id', name: 'BlueCollarCandidateDetail', component: BlueCollarCandidateDetail, meta: { requiresAuth: true } },
 
-  // 📄 Reports
+  // 📄 Reports + Roadmap
   { path: '/reports', name: 'Reports', component: Reports, meta: { requiresAuth: true } },
+  { path: '/roadmap', name: 'Roadmap', component: () => import('@/views/Roadmap.vue'), meta: { requiresAuth: true } },
 
-  // Roadmap
-  {
-    path: '/roadmap',
-    name: 'Roadmap',
-    component: () => import('@/views/Roadmap.vue'),
-  },
-  
+  // ✅ Catch-all fallback route to handle unmatched or empty paths
+  { path: '/:catchAll(.*)*', redirect: '/dashboard' }
 ]
 
 const router = createRouter({

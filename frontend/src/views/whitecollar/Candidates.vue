@@ -14,6 +14,16 @@
         <v-btn :class="{ 'active-tab': currentRoute === 'candidates' }" @click="goTo('/whitecollar/candidates')">
           Candidates
         </v-btn>
+
+        <v-btn
+          class="fullview-toggle-btn"
+          :color="isCompactView ? 'blue-darken-2' : 'grey-darken-2'"
+          variant="flat"
+          @click="toggleCompactView"
+        >
+          {{ isCompactView ? 'Full View' : 'Normal View' }}
+        </v-btn>
+
       </div>
 
 
@@ -108,8 +118,8 @@
         </v-expand-transition>
 
         <!-- Candidate Table -->
-        <div class="table-wrapper">
-          <table class="native-table sticky-table">
+        <div :class="['table-wrapper', { 'compact-mode': isCompactView }]">
+          <table class="native-table">
             <thead>
               <tr>
                 <th>Candidate ID</th>
@@ -252,6 +262,12 @@ const recruiters = ref([])
 const globalSearch = ref('')
 
 const currentDate = ref(dayjs().tz(tz).format('YYYY-MM-DD'))
+
+const isCompactView = ref(false)
+const toggleCompactView = () => {
+  isCompactView.value = !isCompactView.value
+}
+
 
 
 const stageCounts = ref({
@@ -566,8 +582,6 @@ onMounted(() => {
 
 </script>
 
-
-
   <style scoped>
   .v-table { overflow-x: auto; white-space: nowrap; }
   .v-table th, .v-table td { padding: 8px; }
@@ -709,6 +723,26 @@ onMounted(() => {
   background-color: #eb3d4f !important; /* soft pink-red */
   color: #e60707 !important;
 }
+
+
+.fullview-toggle-btn {
+  font-weight: 600;
+  text-transform: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+}
+
+.compact-mode {
+  font-size: 11px;
+  zoom: 0.85;
+}
+
+.compact-mode .native-table th,
+.compact-mode .native-table td {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
 
 
   </style>

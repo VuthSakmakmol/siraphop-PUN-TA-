@@ -12,7 +12,7 @@
 
       <v-divider class="my-4" />
 
-      <!-- Candidate Info -->
+      <!-- Info -->
       <v-card-text>
         <v-row dense>
           <v-col cols="12" md="4"><strong>Name:</strong> {{ candidate.fullName }}</v-col>
@@ -32,7 +32,7 @@
           </v-col>
         </v-row>
 
-        <!-- Upload Documents -->
+        <!-- Upload -->
         <v-divider class="my-5" />
         <h4 class="text-subtitle-1 font-weight-medium mb-2">Upload Documents</h4>
         <v-file-input
@@ -45,7 +45,7 @@
         />
         <v-btn class="mt-2" variant="elevated" color="primary" @click="uploadDocuments">Upload</v-btn>
 
-        <!-- Uploaded Documents -->
+        <!-- Uploaded -->
         <v-divider class="my-6" />
         <h4 class="text-subtitle-1 font-weight-medium mb-2">Uploaded Documents</h4>
         <v-row dense>
@@ -69,11 +69,13 @@
     </v-card>
   </v-container>
 </template>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/utils/api'
 import Swal from 'sweetalert2'
+import dayjs from 'dayjs'
 
 const route = useRoute()
 const router = useRouter()
@@ -82,48 +84,31 @@ const candidate = ref({})
 const newDocuments = ref([])
 const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
 
+const formatDate = (date) => date ? dayjs(date).format('DD-MMM-YY') : '-'
+
 const fetchCandidate = async () => {
   try {
     const res = await api.get(`/candidates/${route.params.id}`)
     candidate.value = res.data
   } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: '❌ Error',
-      text: 'Failed to load candidate details',
-      allowEnterKey: true
-    })
+    Swal.fire('❌ Error', 'Failed to load candidate details', 'error')
   }
 }
 
 const uploadDocuments = async () => {
   if (!newDocuments.value.length) {
-    return Swal.fire({
-      icon: 'warning',
-      title: '⚠️ No Files',
-      text: 'Please select documents to upload.',
-      allowEnterKey: true
-    })
+    return Swal.fire('⚠️ No Files', 'Please select documents to upload.', 'warning')
   }
+
   try {
     const formData = new FormData()
     newDocuments.value.forEach(file => formData.append('documents', file))
     await api.post(`/candidates/${route.params.id}/documents`, formData)
-    Swal.fire({
-      icon: 'success',
-      title: '✅ Uploaded',
-      text: 'Documents uploaded successfully.',
-      allowEnterKey: true
-    })
     newDocuments.value = []
-    fetchCandidate()
+    await fetchCandidate()
+    Swal.fire('✅ Uploaded', 'Documents uploaded successfully.', 'success')
   } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: '❌ Upload Failed',
-      text: 'Failed to upload documents.',
-      allowEnterKey: true
-    })
+    Swal.fire('❌ Upload Failed', 'Failed to upload documents.', 'error')
   }
 }
 
@@ -134,44 +119,36 @@ const deleteDocument = async (index) => {
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Yes, delete',
-    cancelButtonText: 'Cancel',
-    allowEnterKey: true
+    cancelButtonText: 'Cancel'
   })
+
   if (!confirm.isConfirmed) return
 
   try {
     const updatedDocs = candidate.value.documents.filter((_, i) => i !== index)
-    await api.put(`/candidates/${route.params.id}`, { documents: updatedDocs })
+    await api.put(`/candidates/${route.params.id}`, {
+      documents: updatedDocs,
+      fullName: candidate.value.fullName,
+      applicationSource: candidate.value.applicationSource || 'Other'
+    })
     candidate.value.documents = updatedDocs
-    Swal.fire({
-      icon: 'success',
-      title: '🗑️ Deleted',
-      text: 'Document removed successfully.',
-      allowEnterKey: true
-    })
+    Swal.fire('🗑️ Deleted', 'Document removed successfully.', 'success')
   } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: '❌ Delete Failed',
-      text: 'Failed to delete document.',
-      allowEnterKey: true
-    })
+    Swal.fire('❌ Delete Failed', 'Could not delete document.', 'error')
   }
 }
 
 const previewDocument = (docPath) => {
-  const fullUrl = `http://128.199.185.84:5000/${docPath.replace(/\\/g, '/')}`
+  const fullUrl = `${window.location.origin}/${docPath.replace(/\\/g, '/')}`
   window.open(fullUrl, '_blank')
 }
 
-const formatDate = (date) => date ? new Date(date).toISOString().split('T')[0] : '-'
 const goBack = () => router.back()
 
 onMounted(() => {
   fetchCandidate()
 })
 </script>
-
 
 <style scoped>
 .v-card-text p {

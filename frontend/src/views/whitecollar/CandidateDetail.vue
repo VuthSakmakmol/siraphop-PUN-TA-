@@ -80,8 +80,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import api from '@/utils/api'  // ✅ use api.js wrapper
+import api from '@/utils/api'
 import Swal from 'sweetalert2'
+import dayjs from 'dayjs'
+
 
 const route = useRoute()
 const router = useRouter()
@@ -89,6 +91,11 @@ const router = useRouter()
 const candidate = ref({})
 const newDocuments = ref([])
 const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
+
+
+const formatDate = (date) => {
+  return date ? dayjs(date).format('DD-MMM-YY') : '-'
+}
 
 const alertBox = (icon, title, text = '') => {
   return Swal.fire({
@@ -105,8 +112,8 @@ const fetchCandidate = async () => {
   try {
     const res = await api.get(`/candidates/${route.params.id}`)
     candidate.value = res.data
-  } catch {
-    alertBox('error', '❌ Failed to Load', 'Unable to fetch candidate details.')
+  } catch (err) {
+    alertBox('error', '❌ Failed to Load', err.response?.data?.message || 'Unable to fetch candidate details.')
   }
 }
 
@@ -121,9 +128,9 @@ const uploadDocuments = async () => {
     await api.post(`/candidates/${route.params.id}/documents`, formData)
     alertBox('success', '✅ Uploaded', 'Documents uploaded successfully.')
     newDocuments.value = []
-    fetchCandidate()
-  } catch {
-    alertBox('error', '❌ Upload Failed', 'Could not upload the selected documents.')
+    await fetchCandidate()
+  } catch (err) {
+    alertBox('error', '❌ Upload Failed', err.response?.data?.message || 'Could not upload the selected documents.')
   }
 }
 
@@ -143,22 +150,23 @@ const deleteDocument = async (index) => {
 
   try {
     const updatedDocs = candidate.value.documents.filter((_, i) => i !== index)
-    await api.put(`/candidates/${route.params.id}`, { documents: updatedDocs })
-    candidate.value.documents = updatedDocs
+    await api.put(`/candidates/${route.params.id}`, {
+      fullName: candidate.value.fullName,
+      applicationSource: candidate.value.applicationSource || 'Other', // ← fallback if missing
+      documents: updatedDocs
+    })
+    await fetchCandidate()
     alertBox('success', '🗑️ Deleted', 'Document removed successfully.')
-  } catch {
-    alertBox('error', '❌ Delete Failed', 'Could not delete the document.')
+  } catch (err) {
+    alertBox('error', '❌ Delete Failed', err.response?.data?.message || 'Could not delete the document.')
   }
 }
 
 const previewDocument = (docPath) => {
-  const fullUrl = `http://localhost:5000/${docPath.replace(/\\/g, '/')}`
+  const fullUrl = `${window.location.origin}/${docPath.replace(/\\/g, '/')}`
   window.open(fullUrl, '_blank')
 }
 
-const formatDate = (date) => {
-  return date ? new Date(date).toISOString().split('T')[0] : '-'
-}
 
 const goBack = () => {
   router.back()
@@ -168,7 +176,6 @@ onMounted(() => {
   fetchCandidate()
 })
 </script>
-
 
 <style scoped>
 .v-card-text p {

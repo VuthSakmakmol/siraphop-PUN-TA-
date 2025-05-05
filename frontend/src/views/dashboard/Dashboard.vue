@@ -1,12 +1,9 @@
 <template>
   <v-container fluid>
     <!-- 🔹 Sticky Filter Bar -->
-    <v-sheet
-      elevation="2"
-      class="pa-2 mb-4 sticky-filter"
-      color="white"
-    >
+    <v-sheet elevation="2" class="pa-2 mb-4 sticky-filter" color="white">
       <v-row dense class="align-center">
+        <!-- General Filters (For Charts + KPI) -->
         <v-col cols="12" sm="6" md="2.4">
           <v-select
             v-model="filterType"
@@ -17,7 +14,6 @@
             hide-details
           />
         </v-col>
-
         <v-col cols="12" sm="6" md="2.4">
           <v-select
             v-model="filterRecruiter"
@@ -29,7 +25,6 @@
             clearable
           />
         </v-col>
-
         <v-col cols="12" sm="6" md="2.4">
           <v-autocomplete
             v-model="filterDepartment"
@@ -45,7 +40,7 @@
           />
         </v-col>
 
-
+        <!-- From / To Date (For Charts) -->
         <v-col cols="6" sm="3" md="2.4">
           <v-menu v-model="fromMenu" :close-on-content-click="false">
             <template #activator="{ props }">
@@ -82,10 +77,19 @@
           </v-menu>
         </v-col>
       </v-row>
+
+      <!-- 🔸 Report Table Specific Filters -->
+      <v-row dense class="mt-2">
+        <v-col cols="6" sm="3" md="2">
+          <v-select v-model="reportView" :items="['month', 'quarter', 'year']" label="View" hide-details density="compact" variant="outlined" />
+        </v-col>
+        <v-col cols="6" sm="3" md="2">
+          <v-select v-model="reportYear" :items="yearOptions" label="Year" hide-details density="compact" variant="outlined" />
+        </v-col>
+      </v-row>
     </v-sheet>
 
-
-    <!-- 🔸 Charts -->
+    <!-- 🔸 Charts Section -->
     <v-row>
       <v-col cols="12" md="4">
         <RecruitmentPipelineChart :pipeline="pipelineData" />
@@ -96,49 +100,26 @@
       <v-col cols="12" md="4">
         <FinalDecisionPie :series="decisionData.counts" :labels="decisionData.labels" />
       </v-col>
-      
 
-      <!-- 🔸 Monthly Line + KPI -->
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="6">
         <v-card class="pa-2">
-          <v-btn @click="showFull = true" icon="mdi-fullscreen" class="float-right mb-2" title="Expand" />
           <MonthlyApplicationLine :type="queryFilters.type" :subType="queryFilters.subType" :start="queryFilters.from" :end="queryFilters.to" />
         </v-card>
       </v-col>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="6">
         <VacancyKPI :typeLabel="filterType" :data="currentKpiData" :loading="loadingKpi" />
       </v-col>
 
-      <!-- ✅ Recruitment Report Table -->
+      <!-- 🔹 Recruitment Report Table -->
       <v-col cols="12">
         <RecruitmentReportTable
           :type="queryFilters.type"
           :sub-type="queryFilters.subType"
-          :start="from"
-          :end="to"
+          :view="reportView"
+          :year="reportYear"
         />
       </v-col>
     </v-row>
-
-    <!-- 🔲 Fullscreen Dialog -->
-    <v-dialog v-model="showFull" fullscreen transition="dialog-bottom-transition" persistent>
-      <v-card>
-        <v-toolbar flat color="primary" dark>
-          <v-toolbar-title>Monthly Applications (Fullscreen)</v-toolbar-title>
-          <v-spacer />
-          <v-btn icon @click="showFull = false"><v-icon>mdi-close</v-icon></v-btn>
-        </v-toolbar>
-        <v-card-text class="pa-4">
-          <MonthlyApplicationLine :type="queryFilters.type" :subType="queryFilters.subType" :start="queryFilters.from" :end="queryFilters.to" />
-          <RecruitmentReportTable
-            :type="queryFilters.type"
-            :sub-type="queryFilters.subType"
-            :start="queryFilters.from"
-            :end="queryFilters.to"
-          />
-        </v-card-text>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
@@ -154,7 +135,7 @@ import MonthlyApplicationLine from '@/components/dashboard/MonthlyApplicationLin
 import VacancyKPI from '@/components/dashboard/VacancyKPI.vue'
 import RecruitmentReportTable from '@/components/dashboard/RecruitmentReportTable.vue'
 
-// Filters
+// Filters (Global for charts)
 const filterType = ref('White Collar')
 const filterRecruiter = ref('')
 const filterDepartment = ref('')
@@ -162,7 +143,12 @@ const filterOptions = ['White Collar', 'Blue Collar - Sewer', 'Blue Collar - Non
 const recruiterOptions = ref([])
 const departmentOptions = ref([])
 
-// Dates
+// Report Table Specific Filters
+const reportView = ref('month')
+const reportYear = ref(new Date().getFullYear())
+const yearOptions = Array.from({ length: 11 }, (_, i) => 2020 + i)
+
+// From/To (only for charts)
 const from = ref(dayjs().startOf('year').format('YYYY-MM-DD'))
 const to = ref(dayjs().endOf('year').format('YYYY-MM-DD'))
 const fromDisplay = ref(dayjs(from.value).format('DD/MM/YYYY'))
@@ -172,18 +158,15 @@ const toMenu = ref(false)
 const updateFromDisplay = () => { fromDisplay.value = dayjs(from.value).format('DD/MM/YYYY'); fromMenu.value = false }
 const updateToDisplay = () => { toDisplay.value = dayjs(to.value).format('DD/MM/YYYY'); toMenu.value = false }
 
-// Filters as query
+// Query filters for charts
 const queryFilters = computed(() => {
   let type = 'White Collar'
   let subType = null
   if (filterType.value === 'Blue Collar - Sewer') {
-    type = 'Blue Collar'
-    subType = 'Sewer'
+    type = 'Blue Collar'; subType = 'Sewer'
   } else if (filterType.value === 'Blue Collar - Non-Sewer') {
-    type = 'Blue Collar'
-    subType = 'Non-Sewer'
+    type = 'Blue Collar'; subType = 'Non-Sewer'
   }
-
   return {
     type,
     subType,
@@ -194,7 +177,7 @@ const queryFilters = computed(() => {
   }
 })
 
-// Chart data
+// Chart Data
 const sourceData = ref({ labels: [], counts: [] })
 const decisionData = ref({ labels: [], counts: [] })
 const pipelineData = ref({})
@@ -202,9 +185,7 @@ const whiteKpi = ref({})
 const sewerKpi = ref({})
 const nonSewerKpi = ref({})
 const loadingKpi = ref(false)
-const showFull = ref(false)
 
-// Dynamic KPI
 const currentKpiData = computed(() => {
   if (filterType.value === 'White Collar') return whiteKpi.value
   if (filterType.value === 'Blue Collar - Sewer') return sewerKpi.value
@@ -212,7 +193,7 @@ const currentKpiData = computed(() => {
   return {}
 })
 
-// Fetching
+// API Fetchers
 const fetchDashboardStats = async () => {
   try {
     const res = await axios.post('/api/dashboard/stats', queryFilters.value)
@@ -236,7 +217,6 @@ const fetchAllKPI = async () => {
     const white = await axios.post('/api/dashboard/stats', { ...base, type: 'White Collar' })
     const sewer = await axios.post('/api/dashboard/stats', { ...base, type: 'Blue Collar', subType: 'Sewer' })
     const nonSewer = await axios.post('/api/dashboard/stats', { ...base, type: 'Blue Collar', subType: 'Non-Sewer' })
-
     whiteKpi.value = white.data.kpi || {}
     sewerKpi.value = sewer.data.kpi || {}
     nonSewerKpi.value = nonSewer.data.kpi || {}
@@ -244,15 +224,6 @@ const fetchAllKPI = async () => {
     console.error('❌ KPI fetch error:', err)
   }
   loadingKpi.value = false
-}
-
-const fetchRecruiters = async () => {
-  try {
-    const res = await axios.get('/api/departments/all-recruiters')
-    recruiterOptions.value = res.data.recruiters || []
-  } catch (err) {
-    console.error('❌ Recruiter fetch error:', err)
-  }
 }
 
 const fetchDepartments = async () => {
@@ -264,21 +235,17 @@ const fetchDepartments = async () => {
   }
 }
 
-
 onMounted(async () => {
   fetchDepartments()
   fetchDashboardStats()
   fetchAllKPI()
-
   try {
     const res = await axios.get('/api/departments/global-recruiters')
     recruiterOptions.value = res.data.map(r => r.name)
   } catch (err) {
-    console.error('❌ Failed to fetch recruiters:', err)
+    console.error('❌ Recruiter fetch error:', err)
   }
 })
-
-
 
 watch(queryFilters, () => {
   fetchDashboardStats()
@@ -287,15 +254,9 @@ watch(queryFilters, () => {
 </script>
 
 <style scoped>
-.chart-title {
-  font-weight: 600;
-  font-size: 16px;
-  color: #444;
-}
-
 .sticky-filter {
   position: sticky;
-  top: 64px; /* adjust based on your header height */
+  top: 64px;
   z-index: 10;
   background-color: white;
 }

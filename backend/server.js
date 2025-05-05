@@ -18,7 +18,7 @@ const app = express();
 // ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
 // ─── API ROUTES ────────────────────────────────────────────────────────────────
 app.use('/api/auth',             require('./routes/authRoutes'));

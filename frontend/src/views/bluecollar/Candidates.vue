@@ -28,6 +28,16 @@
       >
         Show Non-Sewer
       </v-btn>
+
+      <v-btn
+        class="view-toggle-btn"
+        :color="isCompactView ? 'grey-darken-1' : 'blue-darken-2'"
+        variant="flat"
+        @click="toggleCompactView"
+      >
+        {{ isCompactView ? 'Normal View' : 'Full View' }}
+      </v-btn>
+
     </div>
 
     </div>
@@ -133,8 +143,8 @@
       </div> -->
 
       <!-- Candidate Table -->
-      <div class="table-wrapper">
-        <table class="sticky-table native-table">
+      <div :class="['table-wrapper', { compact: isCompactView }]">
+        <table :class="['native-table', { compact: isCompactView }]">
           <thead>
             <tr>
               <th>Candidate ID</th>
@@ -253,6 +263,12 @@ const tz = 'Asia/Phnom_Penh'
 
 const router = useRouter()
 const route = useRoute()
+
+const isCompactView = ref(false)
+const toggleCompactView = () => {
+  isCompactView.value = !isCompactView.value
+}
+
 
 const showForm = ref(false)
 const isEditMode = ref(false)
@@ -787,6 +803,39 @@ onMounted(() => {
 }
 
 
+/* 👇 Compact Table Mode */
+.table-wrapper.compact {
+  overflow-x: auto; /* still scrollable just in case */
+}
+
+.native-table.compact {
+  font-size: 10px;
+  transform: scale(0.85);
+  transform-origin: top left;
+  width: 100%;
+}
+
+.native-table.compact th,
+.native-table.compact td {
+  padding: 4px 8px;
+  min-width: 60px;
+}
+
+.view-toggle-btn {
+  margin-left: 10px;
+  width: 150px;
+  color: white;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+  opacity: 0.9;
+}
 
 
 

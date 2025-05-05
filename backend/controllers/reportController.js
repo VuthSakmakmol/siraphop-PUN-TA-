@@ -7,15 +7,6 @@ const sources = [
   'Job Portal', 'LinkedIn', 'HR Call', 'Other', 'Agency'
 ];
 
-const stageLabels = {
-  Application: 'Received Application',
-  ManagerReview: 'Sent to Manager',
-  Interview: 'Interviews',
-  JobOffer: 'Job Offer',
-  Hired: 'Hired',
-  Onboard: 'Onboard'
-};
-
 const getMonthName = (i) =>
   ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i];
 
@@ -35,7 +26,13 @@ exports.getReport = async (req, res) => {
     if (view === 'quarter') columns = ['Q1', 'Q2', 'Q3', 'Q4'];
     if (view === 'year') columns = [String(year)];
 
-    const roadmapData = await Roadmap.find({ year, type });
+    // ✅ FIX: Include subType filter for roadmap
+    const roadmapQuery = { year, type };
+    if (type === 'Blue Collar' && subType) {
+      roadmapQuery.subType = subType;
+    }
+    const roadmapData = await Roadmap.find(roadmapQuery);
+
     const roadmapMap = {};
     months.forEach(month => {
       const r = roadmapData.find(x => x.month === month);
@@ -50,7 +47,6 @@ exports.getReport = async (req, res) => {
 
     const filtered = allCandidates.filter(c => {
       if (!c.progressDates?.Application) return false;
-
       const applicationDate = dayjs(c.progressDates.Application);
       const applicationYear = applicationDate.year();
       const applicationMonth = applicationDate.month();
@@ -64,15 +60,13 @@ exports.getReport = async (req, res) => {
           (type !== 'Blue Collar' || c.jobRequisitionId.subType === subType));
 
       if (!matchesYear || !matchesType) return false;
-
       if (view === 'quarter' && quarter) return applicationQuarter === +quarter;
-      if (view === 'month' && month) return applicationMonth === +month;
+      if (view === 'month' && month !== null) return applicationMonth === +month;
 
       return true;
     });
 
     const initialArray = () => (view === 'year' ? [0] : view === 'quarter' ? Array(4).fill(0) : Array(12).fill(0));
-
     const pipelineStages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
     const pipeline = {};
     for (const stage of pipelineStages) pipeline[stage] = initialArray();
@@ -96,7 +90,6 @@ exports.getReport = async (req, res) => {
       const m = dayjs(c.progressDates?.Application).month();
       const idx = getIndex(view, m);
       const rawSource = c.applicationSource?.trim();
-
       if (rawSource) {
         for (const definedSource of sources) {
           if (rawSource.toLowerCase().includes(definedSource.toLowerCase())) {
@@ -126,7 +119,6 @@ exports.getReport = async (req, res) => {
     for (const c of filtered) {
       const applied = c.progressDates?.Application;
       const onboard = c.progressDates?.Onboard;
-
       if (applied && onboard) {
         const m = dayjs(onboard).month();
         const idx = getIndex(view, m);
@@ -192,14 +184,13 @@ exports.getReport = async (req, res) => {
     ];
 
     res.json({ columns, rows });
-
   } catch (err) {
     console.error('❌ Report Error:', err);
     res.status(500).json({ message: 'Failed to load report', error: err.message });
   }
 };
 
-// 🔧 Helpers
+// Helpers
 function getIndex(view, month) {
   if (view === 'year') return 0;
   if (view === 'quarter') return Math.floor(month / 3);

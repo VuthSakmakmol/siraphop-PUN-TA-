@@ -107,31 +107,24 @@ exports.getCandidateById = async (req, res) => {
   }
 };
 
-// ✅ Update Candidate
+
 exports.updateCandidate = async (req, res) => {
   try {
     const {
       name,
+      fullName,
       gender,
       applicationSource,
       jobRequisitionId,
-      hireDecision
+      hireDecision,
+      documents
     } = req.body;
+    
 
     const candidate = await Candidate.findById(req.params.id);
     if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
 
-    const currentJob = await JobRequisition.findById(candidate.jobRequisitionId);
-
-    // 🔁 If hire decision changed to "Refused" or "Not Hired", adjust offer count
-    if (['Candidate Refusal', 'Not Hired'].includes(hireDecision) && candidate._offerCounted && currentJob) {
-      currentJob.offerCount = Math.max((currentJob.offerCount || 1) - 1, 0);
-      candidate._offerCounted = false;
-      if (currentJob.offerCount < currentJob.targetCandidates) currentJob.status = 'Vacant';
-      await currentJob.save();
-    }
-
-    // 🔁 If job ID changed and candidate hasn't reached JobOffer yet
+    // 🔁 Handle job reassignment (only if allowed)
     if (
       jobRequisitionId &&
       candidate.progress !== 'JobOffer' &&
@@ -143,28 +136,34 @@ exports.updateCandidate = async (req, res) => {
       candidate.jobRequisitionId = newJob._id;
       candidate.jobRequisitionCode = newJob.jobRequisitionId;
       candidate.departmentCode = newJob.departmentId?.departmentId || '';
+      candidate.applicationSource = applicationSource || candidate.applicationSource || 'Other';
       candidate.jobTitle = newJob.jobTitle;
       candidate.recruiter = newJob.recruiter;
     }
 
-    // ✅ Basic fields
-    candidate.fullName = name;
-    candidate.gender = gender;
-    candidate.applicationSource = applicationSource;
-    candidate.hireDecision = hireDecision;
+    // ✅ Apply basic updates
+    candidate.fullName = fullName || name || candidate.fullName;
+candidate.gender = gender || candidate.gender;
+candidate.applicationSource = applicationSource || candidate.applicationSource || 'Other';
+candidate.hireDecision = hireDecision || candidate.hireDecision;
 
-    if (req.files && req.files.length > 0) {
+
+    // ✅ Accept either new uploads or array-based update
+    if (documents) {
+      candidate.documents = documents; // <-- allows delete
+    } else if (req.files && req.files.length > 0) {
       candidate.documents = req.files.map(file => file.path);
     }
 
     await candidate.save();
-
     res.status(200).json({ message: '✅ Candidate updated successfully', candidate });
+
   } catch (err) {
     console.error('❌ Update error:', err);
     res.status(500).json({ message: '❌ Failed to update candidate', error: err.message });
   }
 };
+
 
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
@@ -264,21 +263,22 @@ exports.updateCandidateProgress = async (req, res) => {
 
 
 
-// ✅ Upload Documents
+// ✅ Upload More Documents
 exports.uploadMoreDocuments = async (req, res) => {
   try {
-    const candidate = await Candidate.findById(req.params.id);
-    if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' });
+    const candidate = await Candidate.findById(req.params.id)
+    if (!candidate) return res.status(404).json({ message: '❌ Candidate not found' })
 
-    const newDocs = req.files?.map(f => f.path) || [];
-    candidate.documents.push(...newDocs);
-    await candidate.save();
+    const newDocs = req.files?.map(f => f.path) || []
+    candidate.documents.push(...newDocs)
+    await candidate.save()
 
-    res.json({ message: '✅ Documents uploaded', candidate });
+    res.json({ message: '✅ Documents uploaded', candidate })
   } catch (err) {
-    res.status(500).json({ message: '❌ Document upload error', error: err.message });
+    res.status(500).json({ message: '❌ Document upload error', error: err.message })
   }
-};
+}
+
 
 // ✅ Delete Candidate
 exports.deleteCandidate = async (req, res) => {

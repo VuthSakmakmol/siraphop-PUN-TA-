@@ -1,7 +1,7 @@
 <template>
   <v-card class="pa-4" elevation="3">
-    <v-card-title class="text-h6 font-weight-bold mb-2">
-      <v-icon color="primary" start>mdi-clipboard-text</v-icon>Vacancies Staticstics -bcrypt
+    <v-card-title class="text-h6 mb-2">
+      <v-icon color="primary" start>mdi-clipboard-text</v-icon>Vacancies Staticstics -
       {{ typeLabel || 'Vacancy KPI' }}
     </v-card-title>
     <v-divider class="mb-4" />
@@ -11,45 +11,50 @@
     </div>
 
     <template v-else>
-      <v-row dense>
-        <v-col
-          v-for="(item, index) in kpiList"
-          :key="index"
-          cols="12"
-          class="mb-1"
-        >
-          <v-sheet class="pa-2 kpi-box" elevation="1">
-            <div class="text-caption text-grey-darken-1">{{ item.label }}</div>
-            <div class="text-body-2 font-weight-bold text-primary">
-              {{ format(item.value, item.isMoney) }}
-            </div>
-          </v-sheet>
+      <!-- Replace the fill rate section with this -->
+      <v-row class="mt-4">
+        <v-col cols="12" md="8">
+          <v-row dense>
+            <v-col
+              v-for="(item, index) in kpiList"
+              :key="index"
+              cols="12"
+              sm="6"
+              class="mb-2"
+            >
+              <v-sheet class="pa-2 kpi-box" elevation="1">
+                <div class="text-caption text-grey-darken-1">{{ item.label }}</div>
+                <div class="text-body-2 font-weight-bold text-primary">
+                  {{ format(item.value, item.isMoney) }}
+                </div>
+              </v-sheet>
+            </v-col>
+          </v-row>
+        </v-col>
+
+        <v-col cols="12" md="4" class="d-flex align-center justify-center">
+          <div class="fillrate-circle-container">
+            <div class="text-caption text-center mt-1 mb-2">Filled Rate</div>
+            <svg viewBox="0 0 36 36" class="circular-chart">
+              <path
+                class="circle-bg"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                class="circle"
+                :stroke-dasharray="fillRate + ', 100'"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <text x="18" y="20.35" class="percentage">{{ fillRate }}%</text>
+            </svg>
+          </div>
         </v-col>
       </v-row>
 
-      <!-- Fill Rate Circle -->
-      <v-row class="mt-4" justify="center">
-        <div class="fillrate-circle-container">
-          <div class="text-caption text-center mt-1">Filled Rate</div>
-          <svg viewBox="0 0 36 36" class="circular-chart">
-            <path
-              class="circle-bg"
-              d="M18 2.0845
-                 a 15.9155 15.9155 0 0 1 0 31.831
-                 a 15.9155 15.9155 0 0 1 0 -31.831"
-            />
-            <path
-              class="circle"
-              :stroke-dasharray="fillRate + ', 100'"
-              d="M18 2.0845
-                 a 15.9155 15.9155 0 0 1 0 31.831
-                 a 15.9155 15.9155 0 0 1 0 -31.831"
-            />
-            <text x="18" y="20.35" class="percentage">{{ fillRate }}%</text>
-          </svg>
-          
-        </div>
-      </v-row>
     </template>
   </v-card>
 </template>
