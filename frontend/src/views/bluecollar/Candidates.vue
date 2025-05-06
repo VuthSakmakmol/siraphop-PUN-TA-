@@ -152,7 +152,7 @@
               <th>Department</th>
               <th>Job Title</th>
               <th>Recruiter</th>
-              <th>Name</th>
+              <th>Candidate Name</th>
               <th>Source</th>
               <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
               <th>Final Decision</th>
@@ -299,7 +299,20 @@ const stageMap = {
   'Onboard': 'Onboard'
 }
 
-const sources = ['Agency','Banner / Job Announment Board','Brochure','FIF','Facebook','HR Call','Job Portal','LinkedIn','Telegram','Other']
+const sources = [
+  'Agency',
+  'Banner / Job Announcement Board',
+  'Brochure',
+  'FIF',
+  'Facebook',
+  'HR Call',
+  'Job Portal',
+  'LinkedIn',
+  'Telegram',
+  'Other'
+]
+
+
 const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
 
 const form = ref({

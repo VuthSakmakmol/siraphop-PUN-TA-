@@ -180,8 +180,6 @@
     }" />
   </v-menu>
 </v-col>
-
-
         <!-- Submit Button -->
         <v-col cols="12" md="3">
           <v-btn color="success" type="submit" class="mt-2" rounded>
@@ -433,19 +431,19 @@ const handleSubmit = async () => {
 
   try {
     if (isEditing.value) {
-      if (form.value.status === 'Vacant') {
-        const check = await api.get(`/candidates/requisition/${editingId.value}/active-offers`)
-        const offerCount = check.data.count || 0
+      // if (form.value.status === 'Vacant') {
+      //   const check = await api.get(`/candidates/requisition/${editingId.value}/active-offers`)
+      //   const offerCount = check.data.count || 0
 
-        if (offerCount > 0) {
-          return alertBox(
-            'warning',
-            '⚠ Cannot Change to Vacant',
-            '',
-            `There are still <b>${offerCount}</b> candidate(s) in <b>Job Offer</b> stage.<br>Please resolve them before changing status.`
-          )
-        }
-      }
+      //   if (offerCount > 0) {
+      //     return alertBox(
+      //       'warning',
+      //       '⚠ Cannot Change to Vacant',
+      //       '',
+      //       `There are still <b>${offerCount}</b> candidate(s) in <b>Job Offer</b> stage.<br>Please resolve them before changing status.`
+      //     )
+      //   }
+      // }
 
       await api.put(`/job-requisitions/${editingId.value}`, payload)
       await alertBox('success', '✅ Updated', 'Job requisition updated successfully.')
