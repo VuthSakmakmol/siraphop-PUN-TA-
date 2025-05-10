@@ -174,29 +174,22 @@
               <td>{{ c.fullName }}</td>
               <td>{{ c.applicationSource }}</td>
               <td v-for="label in stageLabels" :key="label">
-                <v-tooltip v-if="jobIsLocked(c)" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      class="stage-btn"
-                      :disabled="true"
-                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, true)"
-                    >
-                      {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                    </v-btn>
-                  </template>
-                  <span>This stage is disabled because another candidate has reached Job Offer or beyond for this Job ID.</span>
-                </v-tooltip>
-
-                <v-btn
-                  v-else
-                  class="stage-btn"
-                  :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
-                  @click="selectDate(c, label)"
-                >
-                  {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                </v-btn>
-              </td>
+              <v-tooltip location="top" open-delay="1000">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    class="stage-btn"
+                    :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
+                    @click.left="selectDate(c, label)"
+                    @click.right.prevent="clearStage(c, label)"
+                  >
+                    {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                  </v-btn>
+                </template>
+                <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
+                <span v-else>Left click: update date</span>
+              </v-tooltip>
+            </td>
               <td>{{ c.hireDecision }}</td>
               <td>
                 <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
@@ -260,6 +253,7 @@ import * as XLSX from 'xlsx'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 const tz = 'Asia/Phnom_Penh'
+
 
 const router = useRouter()
 const route = useRoute()
@@ -341,6 +335,45 @@ const formatDisplayDate = (val) => {
   const year = date.format('YY')
   return `${day}-${month}-${year}`
 }
+
+
+const clearStage = async (c, label) => {
+  const backend = stageMap[label];
+
+  const confirm = await Swal.fire({
+    title: 'Clear Progress?',
+    text: `Do you want to remove "${label}" stage?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, clear it',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    await api.put(`/candidates/${c._id}/progress`, {
+      newStage: backend,
+      progressDate: null
+    });
+    await fetchCandidates();
+    await Swal.fire({
+      icon: 'success',
+      title: '⛔ Cleared',
+      text: `${label} stage removed.`,
+      allowEnterKey: true
+    });
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Failed',
+      text: err?.response?.data?.message || 'Could not clear stage.',
+      allowEnterKey: true
+    });
+  }
+};
+
 
 const loadCandidatesBySubType = async (subType) => {
   activeSubType.value = subType
@@ -436,8 +469,22 @@ const confirmStageDate = async () => {
 const handleFileUpload = files => {
   form.value.documents = Array.isArray(files) ? files : [files]
 }
-
 const handleSubmit = async () => {
+  // 🚨 Date Validation Check
+  const invalidDates = Object.entries(form.value.progressDates || {}).filter(
+    ([, val]) => !dayjs(val, 'YYYY-MM-DD', true).isValid()
+  )
+
+  if (invalidDates.length > 0) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Invalid Date',
+      text: `Please fix the date(s): ${invalidDates.map(([k]) => k).join(', ')}`,
+      allowEnterKey: true
+    })
+    return
+  }
+
   const fd = new FormData()
   Object.entries(form.value).forEach(([key, val]) => {
     if (key === 'documents') val.forEach(f => fd.append('documents', f))
@@ -471,14 +518,25 @@ const handleSubmit = async () => {
   }
 }
 
+
 const editCandidate = id => {
   const c = candidates.value.find(x => x._id === id)
   if (!c) return
+
+  // ✅ If the current job requisition is not in the dropdown (because it's not 'Vacant'), add it temporarily
+  const exists = jobRequisitionOptions.value.some(j => j._id === (c.jobRequisitionId?._id || c.jobRequisitionId))
+  if (!exists && c.jobRequisitionId) {
+    jobRequisitionOptions.value.push({
+      ...c.jobRequisitionId,
+      displayName: `${c.jobRequisitionId.jobRequisitionId} - ${c.jobRequisitionId.jobTitle}`
+    })
+  }
+
   form.value = {
     name: c.fullName,
     recruiter: c.recruiter,
     department: c.jobRequisitionId?.departmentId?.name || '',
-    jobRequisitionId: jobRequisitionOptions.value.find(j => j._id === c.jobRequisitionId?._id || c.jobRequisitionId)?._id || '',
+    jobRequisitionId: c.jobRequisitionId?._id || c.jobRequisitionId || '',
     jobTitle: c.jobRequisitionId?.jobTitle || '',
     applicationSource: c.applicationSource,
     hireDecision: c.hireDecision,
@@ -486,10 +544,12 @@ const editCandidate = id => {
     progressDates: { ...c.progressDates },
     documents: []
   }
+
   isEditMode.value = true
   editingCandidateId.value = id
   showForm.value = true
 }
+
 
 const deleteCandidate = async id => {
   const confirm = await Swal.fire({

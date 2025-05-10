@@ -6,10 +6,12 @@ import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 import VueApexCharts from 'vue3-apexcharts'
 import '@fortawesome/fontawesome-free/css/all.css'
+import GlobalLoader from './components/GlobalLoader.vue'
 
 
 // ✅ Correct order
 const app = createApp(App)
+app.component('GlobalLoader', GlobalLoader)
 
 app.use(router)
 app.use(vuetify)

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const JobRequisition = require('../models/JobRequisition');
 const Counter = require('../models/Counter');
 const Candidate = require('../models/Candidate')
+const moment = require('moment-timezone');
 
 exports.createCandidate = async (req, res) => {
   try {
@@ -164,13 +165,15 @@ candidate.hireDecision = hireDecision || candidate.hireDecision;
   }
 };
 
+const stageOrder = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
+
 
 exports.updateCandidateProgress = async (req, res) => {
   const { newStage, progressDate } = req.body;
 
   try {
-    if (!newStage || !progressDate) {
-      return res.status(400).json({ message: '❌ Missing stage or progress date.' });
+    if (!newStage) {
+      return res.status(400).json({ message: '❌ Missing stage.' });
     }
 
     const candidate = await Candidate.findById(req.params.id);
@@ -180,18 +183,15 @@ exports.updateCandidateProgress = async (req, res) => {
     if (!job) return res.status(404).json({ message: '❌ Job requisition not found' });
     if (job.status === 'Cancel') return res.status(400).json({ message: '🚫 Job is canceled.' });
 
-    const stageOrder = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard'];
     const currentIndex = stageOrder.indexOf(candidate.progress);
     const newIndex = stageOrder.indexOf(newStage);
 
     if (newIndex === -1) return res.status(400).json({ message: '❌ Invalid stage name' });
 
-    // 🔒 Block if candidate was refused
     if (['Candidate Refusal', 'Not Hired'].includes(candidate.hireDecision) && newIndex > currentIndex) {
       return res.status(400).json({ message: `🚫 Progress is locked due to: ${candidate.hireDecision}` });
     }
 
-    // 🔒 Enforce JobOffer locking if someone already reached it
     const existingOfferCandidate = await Candidate.findOne({
       jobRequisitionId: candidate.jobRequisitionId,
       _id: { $ne: candidate._id },
@@ -208,42 +208,53 @@ exports.updateCandidateProgress = async (req, res) => {
       });
     }
 
-    // ✅ Always update the selected stage's date
     const updatedProgressDates = { ...candidate.progressDates };
-    updatedProgressDates[newStage] = new Date(progressDate);
-    candidate.progressDates = updatedProgressDates;
 
-    // ✅ Update progress field only if moving forward
+    if (progressDate) {
+      updatedProgressDates[newStage] = new Date(progressDate);
+    } else {
+      delete updatedProgressDates[newStage];
+      const lastCompletedStage = stageOrder.findLast(stage => updatedProgressDates[stage]);
+      candidate.progress = lastCompletedStage || 'Application';
+
+      if (newStage === 'Onboard' && candidate._onboardCounted) {
+        job.onboardCount = Math.max((job.onboardCount || 1) - 1, 0);
+        candidate._onboardCounted = false;
+        candidate.hireDecision = 'Candidate in Process';
+      }
+
+      if (newStage === 'JobOffer' && candidate._offerCounted) {
+        job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
+        candidate._offerCounted = false;
+        if (job.status === 'Suspended') job.status = 'Vacant';
+      }
+
+      candidate.progressDates = updatedProgressDates;
+      await candidate.save();
+      await job.save();
+      return res.status(200).json({ message: `⛔ Stage "${newStage}" cleared.`, candidate });
+    }
+
+    candidate.progressDates = updatedProgressDates;
     if (newIndex > currentIndex) {
       candidate.progress = newStage;
     }
 
-    // ✅ Handle JobOffer logic
-    if (
-      newStage === 'JobOffer' &&
-      !candidate._offerCounted &&
-      candidate.hireDecision === 'Candidate in Process'
-    ) {
+    if (newStage === 'JobOffer' && !candidate._offerCounted && candidate.hireDecision === 'Candidate in Process') {
       job.offerCount = (job.offerCount || 0) + 1;
       candidate._offerCounted = true;
-
       if (job.offerCount >= job.targetCandidates) {
         job.status = 'Suspended';
       }
     }
 
-    // ✅ Handle Onboard logic
     if (newStage === 'Onboard' && !candidate._onboardCounted) {
       job.onboardCount = (job.onboardCount || 0) + 1;
-
-      // Decrease offerCount if previously counted
       if (candidate._offerCounted) {
         job.offerCount = Math.max((job.offerCount || 1) - 1, 0);
       }
-
       candidate._onboardCounted = true;
       candidate.hireDecision = 'Hired';
-
       if (job.onboardCount >= job.targetCandidates) {
         job.status = 'Filled';
       }
@@ -258,6 +269,7 @@ exports.updateCandidateProgress = async (req, res) => {
     return res.status(500).json({ message: '❌ Server error', error: err.message });
   }
 };
+
 
 
 

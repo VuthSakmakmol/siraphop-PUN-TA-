@@ -1,4 +1,3 @@
-const moment = require('moment-timezone');
 const JobRequisition = require('../models/JobRequisition');
 const Department = require('../models/Department');
 const Counter = require('../models/Counter');
@@ -107,6 +106,12 @@ exports.createJobRequisition = async (req, res) => {
   }
 };
 
+const moment = require('moment-timezone');
+
+function isValidDate(d) {
+  return moment(d, 'YYYY-MM-DD', true).isValid();
+}
+
 exports.updateJobRequisition = async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,23 +125,31 @@ exports.updateJobRequisition = async (req, res) => {
     } = req.body;
 
     const existing = await JobRequisition.findById(id);
-    if (!existing) return res.status(404).json({ message: 'Requisition not found' });
+    if (!existing) {
+      return res.status(404).json({ message: 'Requisition not found' });
+    }
 
     existing.recruiter = recruiter;
     existing.targetCandidates = targetCandidates;
     existing.hiringCost = hiringCost;
     existing.status = status;
-    existing.openingDate = moment.tz(openingDate, 'Asia/Phnom_Penh');
-    existing.startDate = moment.tz(startDate, 'Asia/Phnom_Penh');
+
+    if (isValidDate(openingDate)) {
+      existing.openingDate = moment.tz(openingDate, 'Asia/Phnom_Penh').toDate();
+    }
+
+    if (isValidDate(startDate)) {
+      existing.startDate = moment.tz(startDate, 'Asia/Phnom_Penh').toDate();
+    }
 
     await existing.save();
-
     res.status(200).json({ message: 'Updated successfully', requisition: existing });
   } catch (err) {
     console.error('❌ Update error:', err.message);
-    res.status(500).json({ message: 'Failed to update job requisition' });
+    res.status(500).json({ message: 'Failed to update job requisition', error: err.message });
   }
 };
+
 
 exports.deleteJobRequisition = async (req, res) => {
   try {

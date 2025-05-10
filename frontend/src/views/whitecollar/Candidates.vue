@@ -110,7 +110,7 @@
                   <v-file-input multiple label="Upload Documents" variant="outlined" @change="handleFileUpload" />
                 </v-col>
                 <v-col cols="12">
-                  <v-btn color="success" type="submit">Submit</v-btn>
+                  <v-btn color="success" type="submit" :loading="isSubmitting">Submit</v-btn>
                 </v-col>
               </v-row>
             </v-form>
@@ -118,88 +118,79 @@
         </v-expand-transition>
 
         <!-- Candidate Table -->
-        <div :class="['table-wrapper', { 'compact-mode': isCompactView }]">
-          <table class="native-table">
-            <thead>
-              <tr>
-                <th>Candidate ID</th>
-                <th>Job ID</th>
-                <th>Department</th>
-                <th>Job Title</th>
-                <th>Recruiter</th>
-                <th>Candidate Name</th>
-                <th>Source</th>
-                <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
-                <th>Final Decision</th>
-                <th>Current Start Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="c in filteredCandidates" :key="c._id">
-                <td>{{ c.candidateId }}</td>
-                <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
-                <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
-                <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
-                <td>{{ c.recruiter }}</td>
-                <td>{{ c.fullName }}</td>
-                <td>{{ c.applicationSource }}</td>
-                <td v-for="label in stageLabels" :key="label">
-                <!-- 🔒 LOCKED BUTTON -->
-                <v-tooltip v-if="jobIsLocked(c)" location="top">
+        <!-- Candidate Table -->
+      <div :class="['table-wrapper', { 'compact-mode': isCompactView }]">
+        <table class="native-table">
+          <thead>
+            <tr>
+              <th>Candidate ID</th>
+              <th>Job ID</th>
+              <th>Department</th>
+              <th>Job Title</th>
+              <th>Recruiter</th>
+              <th>Candidate Name</th>
+              <th>Source</th>
+              <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
+              <th>Final Decision</th>
+              <th>Current Start Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in filteredCandidates" :key="c._id">
+              <td>{{ c.candidateId }}</td>
+              <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
+              <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
+              <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
+              <td>{{ c.recruiter }}</td>
+              <td>{{ c.fullName }}</td>
+              <td>{{ c.applicationSource }}</td>
+              <td v-for="label in stageLabels" :key="label">
+                <v-tooltip location="top" open-delay="1000">
                   <template #activator="{ props }">
                     <v-btn
                       v-bind="props"
                       class="stage-btn"
-                      :disabled="true"
-                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, true)"
+                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
+                      @click.left="selectDate(c, label)"
+                      @click.right.prevent="clearStage(c, label)"
                     >
                       {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
                     </v-btn>
                   </template>
-                  <span>
-                    This stage is disabled because another candidate has reached Job Offer or beyond for this Job ID.
-                  </span>
+                  <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
+                  <span v-else>Left click: update </span>
                 </v-tooltip>
-                  <!-- ✅ EDITABLE BUTTON -->
-                  <v-btn
-                    v-else
-                    class="stage-btn"
-                    :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
-                    @click="selectDate(c, label)"
-                  >
-                    {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                  </v-btn>
-                </td>
-                <td>{{ c.hireDecision }}</td>
-                <td>
-                  <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
-                    {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
-                  </span>
-                  <span v-else>-</span>
-                </td>
-                <td>
-                  <v-menu>
-                    <template #activator="{ props }">
-                      <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
-                    </template>
-                    <v-list>
-                      <v-list-item @click="editCandidate(c)">
-                        <v-list-item-title>Edit</v-list-item-title>
-                      </v-list-item>
-                      <v-list-item @click="goToCandidateDetail(c._id)">
-                        <v-list-item-title>Detail</v-list-item-title>
-                      </v-list-item>
-                      <v-list-item @click="deleteCandidate(c._id)">
-                        <v-list-item-title>Delete</v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              </td>
+              <td>{{ c.hireDecision }}</td>
+              <td>
+                <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
+                  {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
+                </span>
+                <span v-else>-</span>
+              </td>
+              <td>
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item @click="editCandidate(c)">
+                      <v-list-item-title>Edit</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="goToCandidateDetail(c._id)">
+                      <v-list-item-title>Detail</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item @click="deleteCandidate(c._id)">
+                      <v-list-item-title>Delete</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
 
         <!-- Stage Dialog -->
@@ -278,6 +269,43 @@ const stageCounts = ref({
   Hired: 0,
   Onboard: 0
 })
+
+const clearStage = async (c, label) => {
+  const backend = stageMap[label]
+  const confirm = await Swal.fire({
+    title: 'Clear Progress?',
+    text: `Do you want to remove "${label}" stage?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, clear it',
+    cancelButtonText: 'Cancel',
+    allowEnterKey: true
+  })
+
+  if (!confirm.isConfirmed) return
+
+  try {
+    await api.put(`/candidates/${c._id}/progress`, {
+      newStage: backend,
+      progressDate: null
+    })
+    await fetchCandidates()
+    await Swal.fire({
+      icon: 'success',
+      title: '⛔ Cleared',
+      text: `${label} stage removed.`,
+      allowEnterKey: true
+    })
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Failed',
+      text: err?.response?.data?.message || 'Could not clear stage.',
+      allowEnterKey: true
+    })
+  }
+}
+
 
 setInterval(() => {
   const now = dayjs().tz(tz).format('YYYY-MM-DD')
@@ -368,53 +396,109 @@ const selectDate = async (c, label) => {
   }
 }
 
+
 const confirmStageDate = async () => {
-  const { candidate, stage, date } = stageDialog.value
-  stageDialog.value.show = false
+  const { candidate, stage, date } = stageDialog.value;
+  stageDialog.value.show = false;
+
+  const formatted = dayjs(date).tz(tz).format('YYYY-MM-DD');
+
   try {
-    await api.put(`/candidates/${candidate._id}/progress`, { newStage: stage, progressDate: date })
-    await fetchCandidates()
-    const index = candidates.value.findIndex(c => c._id === candidate._id)
+    await api.put(`/candidates/${candidate._id}/progress`, {
+      newStage: stage,
+      progressDate: formatted
+    });
+
+    await fetchCandidates();
+    const index = candidates.value.findIndex(c => c._id === candidate._id);
     if (index !== -1) {
-      candidates.value[index].progressDates[stage] = date
-      candidates.value[index].progress = stage
+      candidates.value[index].progressDates[stage] = formatted;
+      candidates.value[index].progress = stage;
     }
-    alertBox('success', 'Stage Updated ✅', `Stage "${stageDisplayNames[stage]}" updated for candidate "${candidate.fullName}".`)
+
+    alertBox('success', 'Stage Updated ✅', `Stage "${stageDisplayNames[stage]}" updated.`);
   } catch (err) {
-    const msg = err?.response?.data?.message || 'Progress update failed'
-    alertBox('error', '❌ Error', msg)
+    alertBox('error', '❌ Error', err?.response?.data?.message || 'Progress update failed');
   }
-}
+};
+
 
 const handleFileUpload = files => form.value.documents = Array.isArray(files) ? files : [files]
 
+const isSubmitting = ref(false)
+
 const handleSubmit = async () => {
+  // ✅ Validation
+  if (!form.value.name.trim()) {
+    return alertBox('error', '🚫 Missing Name', 'Candidate name is required.')
+  }
+  if (!form.value.jobRequisitionId) {
+    return alertBox('error', '🚫 Missing Job Requisition', 'Please select a job requisition.')
+  }
+  if (!form.value.recruiter || form.value.recruiter.trim() === '') {
+    return alertBox('error', '🚫 Missing Recruiter', 'Please select a recruiter.')
+  }
+  if (!form.value.applicationSource) {
+    return alertBox('error', '🚫 Missing Source', 'Please select an application source.')
+  }
+
+  isSubmitting.value = true
+
   try {
     const fd = new FormData()
-    Object.keys(form.value).forEach(k => {
-      if (k !== 'documents') fd.append(k, form.value[k])
+
+    // Append all form fields except documents
+    Object.keys(form.value).forEach(key => {
+      if (key !== 'documents') {
+        const val = form.value[key]
+        fd.append(key, typeof val === 'object' ? JSON.stringify(val) : val)
+      }
     })
-    form.value.documents.forEach(d => fd.append('documents', d))
+
+    // Append document files
+    form.value.documents.forEach(file => {
+      fd.append('documents', file)
+    })
 
     const method = isEditMode.value ? 'put' : 'post'
-    const url = isEditMode.value ? `/candidates/${editingCandidateId.value}` : `/candidates`
+    const url = isEditMode.value
+      ? `/candidates/${editingCandidateId.value}`
+      : `/candidates`
+
     const res = await api[method](url, fd)
     const updated = res.data.candidate
 
+    // ✅ Update frontend candidate list if in edit mode
     if (isEditMode.value) {
       const jobRes = await api.get(`/job-requisitions/${updated.jobRequisitionId}`)
       updated.jobRequisitionId = jobRes.data
+
       const index = candidates.value.findIndex(c => c._id === updated._id)
-      if (index !== -1) candidates.value[index] = updated
+      if (index !== -1) {
+        candidates.value[index] = updated
+      }
     }
 
     alertBox('success', '✅ Success', `Candidate ${isEditMode.value ? 'updated' : 'created'} successfully.`)
     resetForm()
     await fetchCandidates()
+
+    // ✅ Scroll to table
+    setTimeout(() => {
+      document.querySelector('.native-table')?.scrollIntoView({ behavior: 'smooth' })
+    }, 300)
+
   } catch (err) {
-    alertBox('error', '❌ Submission Failed', err?.response?.data?.message || 'Could not save candidate.')
+    alertBox(
+      'error',
+      '❌ Submission Failed',
+      err?.response?.data?.message || 'Could not save candidate.'
+    )
+  } finally {
+    isSubmitting.value = false
   }
 }
+
 
 const deleteCandidate = async id => {
   const confirm = await Swal.fire({
@@ -516,7 +600,17 @@ const editCandidate = (candidate) => {
   isEditMode.value = true
   editingCandidateId.value = candidate._id
   window.scrollTo({ top: 0, behavior: 'smooth' })
+
+  // ✅ Inject non-vacant job requisition into the list if missing
+  const exists = jobRequisitionOptions.value.some(j => j._id === candidate.jobRequisitionId?._id)
+  if (!exists && candidate.jobRequisitionId) {
+    jobRequisitionOptions.value.push({
+      ...candidate.jobRequisitionId,
+      displayName: `${candidate.jobRequisitionId.jobRequisitionId} - ${candidate.jobRequisitionId.jobTitle}`
+    })
+  }
 }
+
 
 watch([jobRequisitionOptions, editingCandidateId], ([jobs, id]) => {
   if (!isEditMode.value || !id || !jobs.length) return
