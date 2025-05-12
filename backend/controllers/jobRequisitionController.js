@@ -3,17 +3,27 @@ const Department = require('../models/Department');
 const Counter = require('../models/Counter');
 const Candidate = require('../models/Candidate'); // Needed for onboard/offer count updates
 
-// ✅ Get all job requisitions (filterable by type)
 exports.getJobRequisitions = async (req, res) => {
   try {
     const filter = {};
-    if (req.query.type) filter.type = req.query.type;
-    if (req.query.subType) filter.subType = req.query.subType;
+    const { type, subType, page = 1, limit = 10 } = req.query;
 
-    let jobRequisitions = await JobRequisition.find(filter).populate('departmentId');
+    if (type) filter.type = type;
+    if (subType) filter.subType = subType;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [total, data] = await Promise.all([
+      JobRequisition.countDocuments(filter),
+      JobRequisition.find(filter)
+        .populate('departmentId')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+    ]);
 
     // ✅ Add offerCount
-    const withCounts = await Promise.all(jobRequisitions.map(async (job) => {
+    const withCounts = await Promise.all(data.map(async (job) => {
       const offerCount = await getOfferCount(job._id);
       return {
         ...job.toObject(),
@@ -21,11 +31,16 @@ exports.getJobRequisitions = async (req, res) => {
       };
     }));
 
-    res.json(withCounts);
+    res.json({
+      requisitions: withCounts,
+      total
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching job requisitions' });
+    res.status(500).json({ message: 'Error fetching job requisitions', error: err.message });
   }
 };
+
+
 
 const getOfferCount = async (jobId) => {
   return await Candidate.countDocuments({

@@ -156,7 +156,7 @@
               <th>Source</th>
               <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
               <th>Final Decision</th>
-              <th>Currrent Start Date</th>
+              <th>Current Start Date</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -174,22 +174,22 @@
               <td>{{ c.fullName }}</td>
               <td>{{ c.applicationSource }}</td>
               <td v-for="label in stageLabels" :key="label">
-              <v-tooltip location="top" open-delay="1000">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="stage-btn"
-                    :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
-                    @click.left="selectDate(c, label)"
-                    @click.right.prevent="clearStage(c, label)"
-                  >
-                    {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                  </v-btn>
-                </template>
-                <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
-                <span v-else>Left click: update date</span>
-              </v-tooltip>
-            </td>
+                <v-tooltip location="top" open-delay="1000">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      class="stage-btn"
+                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
+                      @click.left="selectDate(c, label)"
+                      @click.right.prevent="clearStage(c, label)"
+                    >
+                      {{ formatDisplayDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                    </v-btn>
+                  </template>
+                  <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
+                  <span v-else>Left click: update date</span>
+                </v-tooltip>
+              </td>
               <td>{{ c.hireDecision }}</td>
               <td>
                 <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
@@ -219,6 +219,27 @@
           </tbody>
         </table>
       </div>
+      <!-- Pagination Controls -->
+      <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
+        <v-select
+          v-model="itemsPerPage"
+          :items="[10, 20, 30, 50, 100]"
+          label="Rows per page"
+          hide-details
+          density="compact"
+          variant="outlined"
+          style="max-width: 150px;"
+          @update:modelValue="() => { page.value = 1; fetchCandidates() }"
+        />
+
+        <v-pagination
+          v-model="page"
+          :length="Math.ceil(totalCandidates / itemsPerPage)"
+          @update:modelValue="fetchCandidates"
+          density="comfortable"
+        />
+      </div>
+
 
       <!-- Stage Dialog -->
       <v-dialog v-model="stageDialog.show" max-width="400">
@@ -253,6 +274,10 @@ import * as XLSX from 'xlsx'
 dayjs.extend(utc)
 dayjs.extend(timezone)
 const tz = 'Asia/Phnom_Penh'
+
+const page = ref(1)
+const itemsPerPage = ref(10)
+const totalCandidates = ref(0)
 
 
 const router = useRouter()
@@ -634,10 +659,28 @@ const fetchJobRequisitions = async () => {
 }
 
 const fetchCandidates = async () => {
-  const res = await api.get('/candidates?type=Blue%20Collar')
-  candidates.value = res.data.reverse()
-  filterCandidates()
+  try {
+    const res = await api.get('/candidates', {
+      params: {
+        type: 'Blue Collar',
+        subType: activeSubType.value, // optional if you're filtering by subtype
+        page: page.value,
+        limit: itemsPerPage.value
+      }
+    })
+    candidates.value = res.data.candidates
+    totalCandidates.value = res.data.total
+    filterCandidates()
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Failed to Fetch',
+      text: 'Could not load candidates.',
+      allowEnterKey: true
+    })
+  }
 }
+
 
 const updateRequisitionDetails = async (jobId) => {
   const res = await api.get(`/job-requisitions/${jobId}`)

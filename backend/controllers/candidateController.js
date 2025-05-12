@@ -74,27 +74,37 @@ exports.createCandidate = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
-
-// ✅ Get Candidates with type and subType filtering
+// ✅ Get Candidates with pagination and filtering (Blue/White Collar)
 exports.getCandidates = async (req, res) => {
   try {
-    const { type, subType } = req.query;
+    const { type, subType, page = 1, limit = 10 } = req.query;
 
     const filters = {};
     if (type) filters.type = type;
     if (subType) filters.subType = subType;
 
-    const candidates = await Candidate.find(filters).populate({
-      path: 'jobRequisitionId',
-      populate: { path: 'departmentId', model: 'Department' }
-    });
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    res.status(200).json(candidates);
+    const total = await Candidate.countDocuments(filters);
+    const candidates = await Candidate.find(filters)
+      .populate({
+        path: 'jobRequisitionId',
+        populate: { path: 'departmentId', model: 'Department' }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.status(200).json({ candidates, total });
   } catch (err) {
-    res.status(500).json({ message: '❌ Failed to fetch candidates', error: err.message });
+    res.status(500).json({
+      message: '❌ Failed to fetch candidates',
+      error: err.message
+    });
   }
 };
+
+
 
 
 // ✅ Get Candidate by ID

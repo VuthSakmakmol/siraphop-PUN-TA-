@@ -248,6 +248,26 @@
         </table>
       </div>
 
+      <div class="d-flex align-center justify-space-between mt-4 flex-wrap">
+  <v-select
+    v-model="itemsPerPage"
+    :items="[10, 20, 30, 50, 100]"
+    label="Rows per page"
+    hide-details
+    density="compact"
+    variant="outlined"
+    style="max-width: 150px;"
+    @update:modelValue="() => { page.value = 1; fetchRequisitions() }"
+  />
+
+  <v-pagination
+    v-model="page"
+    :length="Math.ceil(totalRequisitions / itemsPerPage)"
+    @update:modelValue="fetchRequisitions"
+    density="comfortable"
+  />
+</div>
+
     </v-card>
   </v-container>
 </template>
@@ -261,6 +281,11 @@ import timezone from 'dayjs/plugin/timezone'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import { useRouter, useRoute } from 'vue-router'
+
+
+const page = ref(1)
+const itemsPerPage = ref(10)
+const totalRequisitions = ref(0)
 
 
 dayjs.extend(utc)
@@ -347,16 +372,26 @@ const fetchGlobalRecruiters = async () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await api.get('/job-requisitions')
-  jobRequisitions.value = res.data.reverse()
-    .filter(j => j.type === 'White Collar')
-    .map(j => ({
-      ...j,
-      remainingCandidates: j.targetCandidates - j.onboardCount,
-      departmentName: j.departmentId?.name || '—',
-      offerCount: Number(j.offerCount) || 0
-    }))
+  const res = await api.get('/job-requisitions', {
+    params: {
+      type: 'White Collar',
+      page: page.value,
+      limit: itemsPerPage.value
+    }
+  })
+
+  jobRequisitions.value = res.data.requisitions || res.data
+  totalRequisitions.value = res.data.total || res.data.length || 0
+
+  // map department name and offer count
+  jobRequisitions.value = jobRequisitions.value.map(j => ({
+    ...j,
+    remainingCandidates: j.targetCandidates - j.onboardCount,
+    departmentName: j.departmentId?.name || '—',
+    offerCount: Number(j.offerCount) || 0
+  }))
 }
+
 
 // const onDepartmentChange = () => {
 //   const selected = departments.value.find(d => d._id === form.value.departmentId)

@@ -118,79 +118,100 @@
         </v-expand-transition>
 
         <!-- Candidate Table -->
-        <!-- Candidate Table -->
-      <div :class="['table-wrapper', { 'compact-mode': isCompactView }]">
-        <table class="native-table">
-          <thead>
-            <tr>
-              <th>Candidate ID</th>
-              <th>Job ID</th>
-              <th>Department</th>
-              <th>Job Title</th>
-              <th>Recruiter</th>
-              <th>Candidate Name</th>
-              <th>Source</th>
-              <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
-              <th>Final Decision</th>
-              <th>Current Start Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in filteredCandidates" :key="c._id">
-              <td>{{ c.candidateId }}</td>
-              <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
-              <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
-              <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
-              <td>{{ c.recruiter }}</td>
-              <td>{{ c.fullName }}</td>
-              <td>{{ c.applicationSource }}</td>
-              <td v-for="label in stageLabels" :key="label">
-                <v-tooltip location="top" open-delay="1000">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      class="stage-btn"
-                      :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
-                      @click.left="selectDate(c, label)"
-                      @click.right.prevent="clearStage(c, label)"
-                    >
-                      {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
-                    </v-btn>
-                  </template>
-                  <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
-                  <span v-else>Left click: update </span>
-                </v-tooltip>
-              </td>
-              <td>{{ c.hireDecision }}</td>
-              <td>
-                <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
-                  {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
-                </span>
-                <span v-else>-</span>
-              </td>
-              <td>
-                <v-menu>
-                  <template #activator="{ props }">
-                    <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
-                  </template>
-                  <v-list>
-                    <v-list-item @click="editCandidate(c)">
-                      <v-list-item-title>Edit</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item @click="goToCandidateDetail(c._id)">
-                      <v-list-item-title>Detail</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item @click="deleteCandidate(c._id)">
-                      <v-list-item-title>Delete</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <div :class="['table-wrapper', { 'compact-mode': isCompactView }]">
+          <table class="native-table">
+            <thead>
+              <tr>
+                <th>Candidate ID</th>
+                <th>Job ID</th>
+                <th>Department</th>
+                <th>Job Title</th>
+                <th>Recruiter</th>
+                <th>Candidate Name</th>
+                <th>Source</th>
+                <th v-for="stage in stageLabels" :key="stage">{{ stage }}</th>
+                <th>Final Decision</th>
+                <th>Current Start Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in filteredCandidates" :key="c._id">
+                <td>{{ c.candidateId }}</td>
+                <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
+                <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
+                <td>{{ c.jobRequisitionId?.jobTitle || '-' }}</td>
+                <td>{{ c.recruiter }}</td>
+                <td>{{ c.fullName }}</td>
+                <td>{{ c.applicationSource }}</td>
+                <td v-for="label in stageLabels" :key="label">
+                  <v-tooltip location="top" open-delay="1000">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        class="stage-btn"
+                        :class="getStageColorClass(stageMap[label], c.progressDates?.[stageMap[label]], c.hireDecision, jobIsLocked(c))"
+                        @click.left="selectDate(c, label)"
+                        @click.right.prevent="clearStage(c, label)"
+                      >
+                        {{ formatDate(c.progressDates?.[stageMap[label]]) || '-' }}
+                      </v-btn>
+                    </template>
+                    <span v-if="jobIsLocked(c)">Locked: Because Another candidate reached Job Offer.</span>
+                    <span v-else>Left click: update</span>
+                  </v-tooltip>
+                </td>
+                <td>{{ c.hireDecision }}</td>
+                <td>
+                  <span v-if="c.progressDates?.Application && c.progressDates?.Onboard">
+                    {{ dayjs(c.progressDates.Onboard).diff(dayjs(c.progressDates.Application), 'day') }} days
+                  </span>
+                  <span v-else>-</span>
+                </td>
+                <td>
+                  <v-menu>
+                    <template #activator="{ props }">
+                      <v-btn v-bind="props" size="x-small" flat>Actions</v-btn>
+                    </template>
+                    <v-list>
+                      <v-list-item @click="editCandidate(c)">
+                        <v-list-item-title>Edit</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item @click="goToCandidateDetail(c._id)">
+                        <v-list-item-title>Detail</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item @click="deleteCandidate(c._id)">
+                        <v-list-item-title>Delete</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
+          <v-select
+            v-model="itemsPerPage"
+            :items="[10, 20, 30, 50, 100]"
+            label="Rows per page"
+            hide-details
+            density="compact"
+            variant="outlined"
+            style="max-width: 150px;"
+            @update:modelValue="() => { page = 1; fetchCandidates() }"
+          />
+
+          <v-pagination
+            v-model="page"
+            :length="Math.ceil(totalCandidates / itemsPerPage)"
+            @update:modelValue="fetchCandidates"
+            density="comfortable"
+          />
+        </div>
+
 
 
         <!-- Stage Dialog -->
@@ -533,20 +554,38 @@ const filterCandidates = () => {
 }
 watch(globalSearch, filterCandidates)
 
-const fetchCandidates = async () => {
-  const res = await api.get('/candidates?type=White%20Collar')
-  candidates.value = res.data.reverse()
-  filterCandidates()
+const page = ref(1)
+const itemsPerPage = ref(10)
+const totalCandidates = ref(0)
 
-  const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
-  const counts = Object.fromEntries(stages.map(s => [s, 0]))
-  for (const candidate of res.data) {
-    if (stages.includes(candidate.progress)) {
-      counts[candidate.progress] += 1
+const fetchCandidates = async () => {
+  try {
+    const res = await api.get('/candidates', {
+      params: {
+        type: 'White Collar',
+        page: page.value,
+        limit: itemsPerPage.value
+      }
+    })
+
+    candidates.value = res.data.candidates
+    totalCandidates.value = res.data.total
+    filterCandidates()
+
+    // Update stage counts
+    const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
+    const counts = Object.fromEntries(stages.map(s => [s, 0]))
+    for (const candidate of res.data.candidates) {
+      if (stages.includes(candidate.progress)) {
+        counts[candidate.progress] += 1
+      }
     }
+    stageCounts.value = counts
+  } catch (err) {
+    console.error('❌ Failed to fetch candidates:', err)
   }
-  stageCounts.value = counts
 }
+
 
 const fetchDepartments = async () => {
   const res = await api.get('/departments?type=White Collar')
@@ -566,21 +605,63 @@ const form = ref({
   progressDates: { Application: new Date().toISOString().split('T')[0] },
   documents: []
 })
-
 const updateRequisitionDetails = async (jobId) => {
   const res = await api.get(`/job-requisitions/${jobId}`)
   const job = res.data
+
+  // Safe inject if missing
+  const exists = jobRequisitionOptions.value.some(j => j._id === job._id)
+  if (!exists) {
+    jobRequisitionOptions.value.push({
+      ...job,
+      displayName: `${job.jobRequisitionId} - ${job.jobTitle || ''}`
+    })
+  }
+
   form.value.department = job.departmentId?.name || ''
   form.value.jobTitle = job.jobTitle || ''
   form.value.recruiter = job.recruiter || ''
 }
 
+
 const fetchJobRequisitions = async () => {
-  const res = await api.get('/job-requisitions')
-  jobRequisitionOptions.value = res.data
-    .filter(j => j.status === 'Vacant' && j.type === 'White Collar')
-    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
+  try {
+    const res = await api.get('/job-requisitions')
+
+    const all = res.data.requisitions // ✅ Fix this line
+
+    let base = all
+      .filter(j => j.type === 'White Collar' && j.status === 'Vacant')
+      .map(j => ({
+        ...j,
+        displayName: `${j.jobRequisitionId} - ${j.jobTitle || ''}`
+      }))
+
+    // ✅ Inject assigned job if not already in base
+    if (isEditMode.value && editingCandidateId.value) {
+      const candidate = candidates.value.find(c => c._id === editingCandidateId.value)
+      const jobReq = candidate?.jobRequisitionId
+
+      if (jobReq && !base.some(j => j._id === jobReq._id)) {
+        base.push({
+          ...jobReq,
+          displayName: `${jobReq.jobRequisitionId} - ${jobReq.jobTitle || ''}`
+        })
+      }
+    }
+
+    // ✅ Prevent duplicates
+    const seen = new Set()
+    jobRequisitionOptions.value = base.filter(j => {
+      if (seen.has(j._id)) return false
+      seen.add(j._id)
+      return true
+    })
+  } catch (err) {
+    console.error('❌ Failed to fetch job requisitions:', err)
+  }
 }
+
 
 const resetForm = () => {
   form.value = {
@@ -594,22 +675,42 @@ const resetForm = () => {
   isEditMode.value = false
   editingCandidateId.value = null
 }
-
-const editCandidate = (candidate) => {
+const editCandidate = async (candidate) => {
   showForm.value = true
   isEditMode.value = true
   editingCandidateId.value = candidate._id
   window.scrollTo({ top: 0, behavior: 'smooth' })
 
-  // ✅ Inject non-vacant job requisition into the list if missing
-  const exists = jobRequisitionOptions.value.some(j => j._id === candidate.jobRequisitionId?._id)
-  if (!exists && candidate.jobRequisitionId) {
-    jobRequisitionOptions.value.push({
-      ...candidate.jobRequisitionId,
-      displayName: `${candidate.jobRequisitionId.jobRequisitionId} - ${candidate.jobRequisitionId.jobTitle}`
-    })
+  const jobReq = candidate.jobRequisitionId
+
+  // ✅ Wait for dropdown jobs to load
+  await fetchJobRequisitions()
+
+  // ✅ Inject job requisition into dropdown if not listed
+  const exists = jobRequisitionOptions.value.some(j => j._id === jobReq?._id || j._id === jobReq)
+  if (!exists && jobReq && jobReq._id) {
+    const injected = {
+      ...jobReq,
+      displayName: `${jobReq.jobRequisitionId} - ${jobReq.jobTitle}`
+    }
+    jobRequisitionOptions.value.push(injected)
+  }
+
+  // ✅ Fill form values
+  form.value = {
+    name: candidate.fullName || '',
+    jobRequisitionId: jobReq?._id || jobReq || '',
+    department: jobReq?.departmentId?.name || '',
+    jobTitle: jobReq?.jobTitle || '',
+    recruiter: candidate.recruiter || '',
+    applicationSource: candidate.applicationSource || '',
+    hireDecision: candidate.hireDecision || 'Candidate in Process',
+    progress: candidate.progress || 'Application',
+    progressDates: { ...(candidate.progressDates || {}) },
+    documents: []
   }
 }
+
 
 
 watch([jobRequisitionOptions, editingCandidateId], ([jobs, id]) => {

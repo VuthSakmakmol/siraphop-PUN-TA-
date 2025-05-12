@@ -249,6 +249,25 @@
             </tbody>
           </table>
         </div>
+        <div class="d-flex align-center justify-space-between mt-4 flex-wrap">
+          <v-select
+            v-model="itemsPerPage"
+            :items="[10, 20, 30, 50, 100]"
+            label="Rows per page"
+            hide-details
+            density="compact"
+            variant="outlined"
+            style="max-width: 150px;"
+            @update:modelValue="() => { page.value = 1; fetchRequisitions() }"
+          />
+
+          <v-pagination
+            v-model="page"
+            :length="Math.ceil(totalRequisitions / itemsPerPage)"
+            @update:modelValue="fetchRequisitions"
+            density="comfortable"
+          />
+        </div>
     </v-card>
   </v-container>
 </template>
@@ -265,6 +284,10 @@ import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 dayjs.extend(utc)
 dayjs.extend(timezone)
+
+const page = ref(1)
+const itemsPerPage = ref(10)
+const totalRequisitions = ref(0)
 
 
 const departments = ref([])
@@ -369,14 +392,18 @@ const onDepartmentChange = () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await api.get('/job-requisitions?type=Blue Collar')
-  jobRequisitions.value = res.data.reverse().map(j => ({
-    ...j,
-    departmentName: j.departmentId?.name || '—',
-    offerCount: Number(j.offerCount) || 0,
-    onboardCount: Number(j.onboardCount) || 0
-  }))
+  const res = await api.get('/job-requisitions', {
+    params: {
+      type: 'Blue Collar',
+      page: page.value,
+      limit: itemsPerPage.value
+    }
+  })
+
+  jobRequisitions.value = res.data.requisitions || res.data // use `requisitions` if you return paginated result
+  totalRequisitions.value = res.data.total || res.data.length || 0
 }
+
 
 
 const goToFilteredCandidates = (job, status) => {
