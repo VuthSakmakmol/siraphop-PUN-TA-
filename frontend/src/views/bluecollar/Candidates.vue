@@ -544,18 +544,15 @@ const handleSubmit = async () => {
 }
 
 
-const editCandidate = id => {
-  const c = candidates.value.find(x => x._id === id)
-  if (!c) return
+const editCandidate = async id => {
+  const c = candidates.value.find(x => x._id === id);
+  if (!c) return;
 
-  // ✅ If the current job requisition is not in the dropdown (because it's not 'Vacant'), add it temporarily
-  const exists = jobRequisitionOptions.value.some(j => j._id === (c.jobRequisitionId?._id || c.jobRequisitionId))
-  if (!exists && c.jobRequisitionId) {
-    jobRequisitionOptions.value.push({
-      ...c.jobRequisitionId,
-      displayName: `${c.jobRequisitionId.jobRequisitionId} - ${c.jobRequisitionId.jobTitle}`
-    })
-  }
+  showForm.value = true;
+  isEditMode.value = true;
+  editingCandidateId.value = id;
+
+  await fetchJobRequisitions(); // 👈 must come before setting dropdown values
 
   form.value = {
     name: c.fullName,
@@ -568,12 +565,9 @@ const editCandidate = id => {
     progress: c.progress,
     progressDates: { ...c.progressDates },
     documents: []
-  }
+  };
+};
 
-  isEditMode.value = true
-  editingCandidateId.value = id
-  showForm.value = true
-}
 
 
 const deleteCandidate = async id => {
@@ -598,6 +592,47 @@ const deleteCandidate = async id => {
     allowEnterKey: true
   })
 }
+
+const fetchJobRequisitions = async () => {
+  try {
+    const res = await api.get('/job-requisitions');
+    const allJobs = res.data.requisitions; // 🔥 fix here
+
+    const base = allJobs
+      .filter(j =>
+        j.type === 'Blue Collar' &&
+        j.status === 'Vacant' &&
+        (!activeSubType.value || j.subType === activeSubType.value)
+      )
+      .map(j => ({
+        ...j,
+        displayName: `${j.jobRequisitionId} - ${j.jobTitle || ''}`
+      }));
+
+    if (isEditMode.value && editingCandidateId.value) {
+      const candidate = candidates.value.find(c => c._id === editingCandidateId.value);
+      const job = candidate?.jobRequisitionId;
+
+      if (job && !base.some(j => j._id === job._id)) {
+        base.push({
+          ...job,
+          displayName: `${job.jobRequisitionId} - ${job.jobTitle || ''}`
+        });
+      }
+    }
+
+    jobRequisitionOptions.value = base;
+  } catch (err) {
+    console.error('❌ Failed to fetch requisitions:', err.message);
+    await Swal.fire({
+      icon: 'error',
+      title: 'Job Fetch Failed',
+      text: err.message,
+      allowEnterKey: true
+    });
+  }
+};
+
 
 const exportToExcel = () => {
   const rows = filteredCandidates.value.map(c => ({
@@ -651,12 +686,7 @@ const filterCandidates = () => {
   })
 }
 
-const fetchJobRequisitions = async () => {
-  const res = await api.get('/job-requisitions')
-  jobRequisitionOptions.value = res.data
-    .filter(j => j.type === 'Blue Collar' && j.status === 'Vacant')
-    .map(j => ({ ...j, displayName: `${j.jobRequisitionId} - ${j.jobTitle}` }))
-}
+
 
 const fetchCandidates = async () => {
   try {
