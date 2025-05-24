@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid class="pa-0">
     <!-- Navbar -->
     <div class="whitecollar-nav">
       <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
@@ -17,7 +17,7 @@
     </div>
 
 
-    <v-card class="pa-5" elevation="5">
+    <v-card class="pa-3" elevation="5">
       <!-- Toggle Form -->
       <v-card-title>
         <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
@@ -249,7 +249,8 @@
             </tbody>
           </table>
         </div>
-        <div class="d-flex align-center justify-space-between mt-4 flex-wrap">
+        <!-- Pagination Controls -->
+        <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
           <v-select
             v-model="itemsPerPage"
             :items="[10, 20, 30, 50, 100]"
@@ -261,12 +262,18 @@
             @update:modelValue="() => { page.value = 1; fetchRequisitions() }"
           />
 
-          <v-pagination
-            v-model="page"
-            :length="Math.ceil(totalRequisitions / itemsPerPage)"
-            @update:modelValue="fetchRequisitions"
-            density="comfortable"
-          />
+          <div class="d-flex align-center gap-3">
+            <span class="page-counter">
+              Page {{ page }} / {{ Math.max(1, Math.ceil(totalRequisitions / itemsPerPage)) }}
+            </span>
+
+            <v-pagination
+              v-model="page"
+              :length="Math.ceil(totalRequisitions / itemsPerPage)"
+              @update:modelValue="fetchRequisitions"
+              density="comfortable"
+            />
+          </div>
         </div>
     </v-card>
   </v-container>
@@ -392,17 +399,39 @@ const onDepartmentChange = () => {
 }
 
 const fetchRequisitions = async () => {
-  const res = await api.get('/job-requisitions', {
-    params: {
-      type: 'Blue Collar',
-      page: page.value,
-      limit: itemsPerPage.value
-    }
-  })
+  try {
+    const res = await api.get('/job-requisitions', {
+      params: {
+        type: 'Blue Collar',
+        page: page.value,
+        limit: itemsPerPage.value,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      }
+    })
 
-  jobRequisitions.value = res.data.requisitions || res.data // use `requisitions` if you return paginated result
-  totalRequisitions.value = res.data.total || res.data.length || 0
+    // if backend returns pagination structure
+    if (res.data.requisitions && res.data.total) {
+      jobRequisitions.value = res.data.requisitions
+      totalRequisitions.value = res.data.total
+    } else {
+      // fallback for plain array
+      jobRequisitions.value = res.data.reverse()
+      totalRequisitions.value = res.data.length
+    }
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: '❌ Error',
+      text: err?.response?.data?.message || 'Failed to fetch requisitions',
+      allowEnterKey: true
+    })
+  }
 }
+watch([page, itemsPerPage], () => {
+  fetchRequisitions()
+})
+
 
 
 

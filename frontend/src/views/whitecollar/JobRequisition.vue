@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid class="pa-0">
     <!-- Navbar -->
     <div class="whitecollar-nav">
       <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">Dashboard</v-btn> -->
@@ -9,7 +9,7 @@
     </div>
 
     <!-- Main Card -->
-    <v-card class="pa-5" elevation="5">
+    <v-card class="pa-5 w-100" elevation="5">
       <!-- Toggle Form -->
       
       <!-- Title and Actions -->
@@ -248,7 +248,10 @@
         </table>
       </div>
 
-      <div class="d-flex align-center justify-space-between mt-4 flex-wrap">
+      <!-- Pagination Controls -->
+      <!-- Pagination Controls -->
+<div class="pagination-bar d-flex align-center justify-space-between mt-4 px-4 py-2">
+  <!-- Rows per page -->
   <v-select
     v-model="itemsPerPage"
     :items="[10, 20, 30, 50, 100]"
@@ -260,19 +263,38 @@
     @update:modelValue="() => { page.value = 1; fetchRequisitions() }"
   />
 
-  <v-pagination
-    v-model="page"
-    :length="Math.ceil(totalRequisitions / itemsPerPage)"
-    @update:modelValue="fetchRequisitions"
-    density="comfortable"
-  />
-</div>
+  <!-- Page Info and Arrows -->
+    <div class="d-flex align-center gap-2">
+        <span class="page-counter">
+          Page {{ page }} / {{ Math.max(1, Math.ceil(totalRequisitions / itemsPerPage)) }}
+        </span>
 
+        <v-btn
+          icon
+          variant="text"
+          class="no-bg-icon"
+          :disabled="page <= 1"
+          @click="page--; fetchRequisitions()"
+        >
+          <v-icon>mdi-chevron-left</v-icon>
+        </v-btn>
+
+        <v-btn
+          icon
+          variant="text"
+          class="no-bg-icon"
+          :disabled="page >= Math.ceil(totalRequisitions / itemsPerPage)"
+          @click="page++; fetchRequisitions()"
+        >
+          <v-icon>mdi-chevron-right</v-icon>
+        </v-btn>
+      </div>
+    </div>
     </v-card>
   </v-container>
 </template>
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/utils/api' // ✅ centralized API import
 import Swal from 'sweetalert2'
 import dayjs from 'dayjs'
@@ -370,20 +392,20 @@ const fetchGlobalRecruiters = async () => {
   const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
 }
-
 const fetchRequisitions = async () => {
   const res = await api.get('/job-requisitions', {
     params: {
       type: 'White Collar',
       page: page.value,
-      limit: itemsPerPage.value
+      limit: itemsPerPage.value,
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
     }
   })
 
   jobRequisitions.value = res.data.requisitions || res.data
   totalRequisitions.value = res.data.total || res.data.length || 0
 
-  // map department name and offer count
   jobRequisitions.value = jobRequisitions.value.map(j => ({
     ...j,
     remainingCandidates: j.targetCandidates - j.onboardCount,
@@ -392,15 +414,10 @@ const fetchRequisitions = async () => {
   }))
 }
 
+watch([page, itemsPerPage], () => {
+  fetchRequisitions()
+})
 
-// const onDepartmentChange = () => {
-//   const selected = departments.value.find(d => d._id === form.value.departmentId)
-//   jobTitles.value = selected?.jobTitles || []
-//   recruiters.value = selected?.recruiters || []
-//   if (!form.value.recruiter && combinedRecruiters.value.length > 0) {
-//     form.value.recruiter = combinedRecruiters.value[0]
-//   }
-// }
 
 const onDepartmentChange = () => {
   const selected = departments.value.find(d => d._id === form.value.departmentId)
@@ -728,6 +745,19 @@ onMounted(async () => {
   height: 28px;
   min-width: 28px;
 }
+
+.pagination-bar {
+  background-color: #fff;
+  border-top: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.page-counter {
+  font-size: 14px;
+  font-weight: 500;
+}
+
 
 </style>
 

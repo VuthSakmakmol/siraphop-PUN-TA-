@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container fluid class="pa-0">
     <!-- Navbar -->
     <div class="whitecollar-nav">
       <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/bluecollar/dashboard')">
@@ -42,7 +42,7 @@
 
     </div>
 
-    <v-card class="pa-5 mb-4" elevation="5">
+    <v-card class="pa-4 mb-4" elevation="5" style="width: 100%;">
       <v-card-title>
         <v-row class="w-100"  align-content="center" justify="start" no-gutters dense>
           <!-- Toggle Form -->
@@ -220,25 +220,34 @@
         </table>
       </div>
       <!-- Pagination Controls -->
-      <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
-        <v-select
-          v-model="itemsPerPage"
-          :items="[10, 20, 30, 50, 100]"
-          label="Rows per page"
-          hide-details
-          density="compact"
-          variant="outlined"
-          style="max-width: 150px;"
-          @update:modelValue="() => { page.value = 1; fetchCandidates() }"
-        />
+<div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
+  <!-- Rows per page -->
+  <v-select
+    v-model="itemsPerPage"
+    :items="[10, 20, 30, 50, 100]"
+    label="Rows per page"
+    hide-details
+    density="compact"
+    variant="outlined"
+    style="max-width: 150px;"
+    @update:modelValue="() => { page = 1; fetchCandidates() }"
+  />
 
-        <v-pagination
-          v-model="page"
-          :length="Math.ceil(totalCandidates / itemsPerPage)"
-          @update:modelValue="fetchCandidates"
-          density="comfortable"
-        />
-      </div>
+  <!-- Pagination + page number -->
+  <div class="d-flex align-center gap-3">
+    <span class="page-counter">
+      Page {{ page }} / {{ totalPages }}
+    </span>
+
+    <v-pagination
+      v-model="page"
+      :length="totalPages"
+      @update:modelValue="fetchCandidates"
+      density="comfortable"
+    />
+  </div>
+</div>
+
 
 
       <!-- Stage Dialog -->
@@ -527,6 +536,7 @@ const handleSubmit = async () => {
       text: `Candidate ${isEditMode.value ? 'updated' : 'created'} successfully.`,
       allowEnterKey: true
     })
+    page.value = 1
     await fetchCandidates()
     if (isEditMode.value) {
       const updated = candidates.value.find(c => c._id === editingCandidateId.value)
@@ -686,19 +696,19 @@ const filterCandidates = () => {
   })
 }
 
-
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCandidates.value / itemsPerPage.value)))
 
 const fetchCandidates = async () => {
   try {
     const res = await api.get('/candidates', {
       params: {
         type: 'Blue Collar',
-        subType: activeSubType.value, // optional if you're filtering by subtype
+        subType: activeSubType.value,
         page: page.value,
         limit: itemsPerPage.value
       }
     })
-    candidates.value = res.data.candidates
+    candidates.value = res.data.candidates.reverse()
     totalCandidates.value = res.data.total
     filterCandidates()
   } catch (err) {
@@ -710,6 +720,7 @@ const fetchCandidates = async () => {
     })
   }
 }
+
 
 
 const updateRequisitionDetails = async (jobId) => {
@@ -746,11 +757,14 @@ watch(() => route.query, () => {
   highlightedCandidateId.value = route.query.candidateId || null
   filterCandidates()
 })
-
 onMounted(() => {
   fetchJobRequisitions()
+
+  // ✅ Set initial subType
+  activeSubType.value = 'Sewer' // or 'Non-Sewer', or make it dynamic
+
   fetchCandidates()
-  // ✅ Auto-select job requisition if passed from URL
+
   const preselectedJobId = route.query.jobRequisitionId
   if (preselectedJobId) {
     showForm.value = true
@@ -758,6 +772,7 @@ onMounted(() => {
     updateRequisitionDetails(preselectedJobId)
   }
 })
+
 </script>
 
 
@@ -772,6 +787,11 @@ onMounted(() => {
 
 .v-table th {
   font-weight: bold;
+}
+
+.table-wrapper {
+  margin: 0; /* remove margin */
+  width: 100%; /* full width */
 }
 
 

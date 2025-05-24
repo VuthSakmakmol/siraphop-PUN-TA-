@@ -1,5 +1,5 @@
   <template>
-    <v-container>
+   <v-container fluid class="pa-0 ma-0 full-width-container">
       <!-- Navbar -->
       <div class="whitecollar-nav">
         <!-- <v-btn :class="{ 'active-tab': currentRoute === 'dashboard' }" @click="goTo('/whitecollar/dashboard')">
@@ -27,8 +27,7 @@
       </div>
 
 
-      <v-card class="pa-5 mb-4" elevation="5"
-        >
+      <v-card flat class="mb-4 full-width-card">
         <v-card-title class="pa-5 mb-4" elevation="5">
           <v-row class="w-100" align-content="center" justify="start" no-gutters dense>
             <v-col cols="12" sm="4" md="3" class="mb-2 mb-sm-0 pr-sm-2">
@@ -193,24 +192,32 @@
 
         <!-- Pagination Controls -->
         <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
-          <v-select
-            v-model="itemsPerPage"
-            :items="[10, 20, 30, 50, 100]"
-            label="Rows per page"
-            hide-details
-            density="compact"
-            variant="outlined"
-            style="max-width: 150px;"
-            @update:modelValue="() => { page = 1; fetchCandidates() }"
-          />
+  <v-select
+    v-model="itemsPerPage"
+    :items="[10, 20, 30, 50, 100]"
+    label="Rows per page"
+    hide-details
+    density="compact"
+    variant="outlined"
+    style="max-width: 150px;"
+    @update:modelValue="() => { page = 1; fetchCandidates() }"
+  />
 
-          <v-pagination
-            v-model="page"
-            :length="Math.ceil(totalCandidates / itemsPerPage)"
-            @update:modelValue="fetchCandidates"
-            density="comfortable"
-          />
-        </div>
+  <div class="d-flex align-center gap-4">
+    <!-- ✅ Page Counter -->
+    <span class="text-caption font-weight-medium text-grey-darken-2">
+      Page {{ page }} / {{ Math.max(Math.ceil(totalCandidates / itemsPerPage), 1) }}
+    </span>
+
+    <!-- Pagination -->
+    <v-pagination
+      v-model="page"
+      :length="Math.ceil(totalCandidates / itemsPerPage)"
+      @update:modelValue="fetchCandidates"
+      density="comfortable"
+    />
+  </div>
+</div>
 
 
 
@@ -568,7 +575,7 @@ const fetchCandidates = async () => {
       }
     })
 
-    candidates.value = res.data.candidates
+    candidates.value = res.data.candidates.reverse()  // ✅ Show latest created first
     totalCandidates.value = res.data.total
     filterCandidates()
 
@@ -937,6 +944,24 @@ onMounted(() => {
   padding: 4px 8px;
   font-size: 11px;
 }
+
+.full-width-container {
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.full-width-card {
+  border-radius: 0;
+  padding: 12px;
+  width: 100%;
+}
+
+.native-table {
+  width: 100% !important;
+  table-layout: auto;
+}
+
 
 
 
