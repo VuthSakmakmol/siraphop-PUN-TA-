@@ -211,7 +211,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filteredRequisitions" :key="item._id">
+            <tr v-for="item in paginatedRequisitions" :key="item._id">
               <td>{{ item.jobRequisitionId }}</td>
               <td>{{ item.departmentName || '—' }}</td>
               <td>{{ item.jobTitle }}</td>
@@ -266,15 +266,16 @@
   <!-- Page Info and Arrows -->
     <div class="d-flex align-center gap-2">
         <span class="page-counter">
-          Page {{ page }} / {{ Math.max(1, Math.ceil(totalRequisitions / itemsPerPage)) }}
+          Page {{ page }} / {{ totalPages }}
         </span>
+
 
         <v-btn
           icon
           variant="text"
           class="no-bg-icon"
           :disabled="page <= 1"
-          @click="page--; fetchRequisitions()"
+          @click="page--"
         >
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
@@ -283,11 +284,12 @@
           icon
           variant="text"
           class="no-bg-icon"
-          :disabled="page >= Math.ceil(totalRequisitions / itemsPerPage)"
-          @click="page++; fetchRequisitions()"
+          :disabled="page >= totalPages"
+          @click="page++"
         >
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
+
       </div>
     </div>
     </v-card>
@@ -392,6 +394,7 @@ const fetchGlobalRecruiters = async () => {
   const res = await api.get('/departments/global-recruiters')
   globalRecruiters.value = res.data.map(r => r.name)
 }
+
 const fetchRequisitions = async () => {
   const res = await api.get('/job-requisitions', {
     params: {
@@ -399,7 +402,8 @@ const fetchRequisitions = async () => {
       page: page.value,
       limit: itemsPerPage.value,
       sortBy: 'createdAt',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
+      search: globalSearch.value,
     }
   })
 
@@ -577,14 +581,33 @@ const resetForm = () => {
 const formatDate = val => val ? dayjs(val).format('D-MMM-YY') : ''
 
 const filteredRequisitions = computed(() => {
-  if (!globalSearch.value) return jobRequisitions.value
-  const keyword = globalSearch.value.toLowerCase()
+  if (!globalSearch.value) return jobRequisitions.value;
+
+  const keyword = globalSearch.value.toLowerCase();
   return jobRequisitions.value.filter(item =>
     Object.values(item).some(val =>
       String(val).toLowerCase().includes(keyword)
     )
-  )
-})
+  );
+});
+
+// ✅ Pagination slice
+const paginatedRequisitions = computed(() => {
+  if (globalSearch.value) {
+    return filteredRequisitions.value; // Show all filtered results in one page
+  }
+  const start = (page.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredRequisitions.value.slice(start, end);
+});
+watch(globalSearch, () => {
+  page.value = 1; // Always jump to page 1 when searching
+});
+
+const totalPages = computed(() => {
+  if (globalSearch.value) return 1; // One page for search results
+  return Math.max(1, Math.ceil(filteredRequisitions.value.length / itemsPerPage.value));
+});
 
 const viewStageCandidates = (item) => {
   const base = {

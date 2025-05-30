@@ -624,44 +624,31 @@ const updateRequisitionDetails = async (jobId) => {
   form.value.recruiter = job.recruiter || ''
 }
 
-
 const fetchJobRequisitions = async () => {
   try {
-    const res = await api.get('/job-requisitions')
-
-    const all = res.data.requisitions // ✅ Fix this line
-
-    let base = all
-      .filter(j => j.type === 'White Collar' && j.status === 'Vacant')
-      .map(j => ({
-        ...j,
-        displayName: `${j.jobRequisitionId} - ${j.jobTitle || ''}`
-      }))
-
-    // ✅ Inject assigned job if not already in base
-    if (isEditMode.value && editingCandidateId.value) {
-      const candidate = candidates.value.find(c => c._id === editingCandidateId.value)
-      const jobReq = candidate?.jobRequisitionId
-
-      if (jobReq && !base.some(j => j._id === jobReq._id)) {
-        base.push({
-          ...jobReq,
-          displayName: `${jobReq.jobRequisitionId} - ${jobReq.jobTitle || ''}`
-        })
+    const res = await api.get('/job-requisitions', {
+      params: {
+        type: 'White Collar',
+        status: 'Vacant'  // ✅ Only fetch vacant requisitions
       }
-    }
+    });
 
-    // ✅ Prevent duplicates
-    const seen = new Set()
-    jobRequisitionOptions.value = base.filter(j => {
-      if (seen.has(j._id)) return false
-      seen.add(j._id)
-      return true
-    })
+    const all = res.data.requisitions || res.data;
+
+    // Build dropdown options with displayName
+    const base = all.map(j => ({
+      ...j,
+      displayName: `${j.jobRequisitionId} - ${j.jobTitle || ''}`
+    }));
+
+    jobRequisitionOptions.value = base;
+    console.log('✅ Loaded White Collar Vacant Job Requisitions:', base);
   } catch (err) {
-    console.error('❌ Failed to fetch job requisitions:', err)
+    console.error('❌ Failed to fetch job requisitions:', err);
   }
-}
+};
+
+
 
 
 const resetForm = () => {
