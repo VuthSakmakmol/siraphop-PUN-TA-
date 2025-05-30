@@ -26,7 +26,6 @@ const candidateSchema = new mongoose.Schema({
     default: null
   },
 
-  // ✅ Track current progress stage (must match progressDates keys)
   progress: {
     type: String,
     enum: [
@@ -40,11 +39,9 @@ const candidateSchema = new mongoose.Schema({
     default: 'Application'
   },
 
-  // ✅ Date per each stage
   progressDates: {
     type: Object,
     default: {}
-    // e.g., { Application: Date, Interview: Date }
   },
 
   documents: { type: [String], default: [] },
@@ -58,6 +55,6 @@ const candidateSchema = new mongoose.Schema({
 
   _offerCounted: { type: Boolean, default: false },
   _onboardCounted: { type: Boolean, default: false }
-});
+}, { timestamps: true }); // ✅ move this here
 
 module.exports = mongoose.model('Candidate', candidateSchema);

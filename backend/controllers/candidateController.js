@@ -367,3 +367,33 @@ exports.getActiveOffersByRequisitionId = async (req, res) => {
     res.status(500).json({ message: '❌ Failed to fetch active offers', error: err.message });
   }
 };
+
+
+exports.getCandidates = async (req, res) => {
+  try {
+    const { type, subType, page = 1, limit = 10 } = req.query;
+
+    const filters = {};
+    if (type) filters.type = type;
+    if (subType) filters.subType = subType;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const total = await Candidate.countDocuments(filters);
+    const candidates = await Candidate.find(filters)
+      .populate({
+        path: 'jobRequisitionId',
+        populate: { path: 'departmentId', model: 'Department' }
+      })
+      .sort({ createdAt: -1 }) // ✅ newest on top
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.status(200).json({ candidates, total });
+  } catch (err) {
+    res.status(500).json({
+      message: '❌ Failed to fetch candidates',
+      error: err.message
+    });
+  }
+};

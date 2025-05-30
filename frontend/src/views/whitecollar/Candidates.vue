@@ -455,6 +455,7 @@ const handleFileUpload = files => form.value.documents = Array.isArray(files) ? 
 
 const isSubmitting = ref(false)
 
+
 const handleSubmit = async () => {
   // ✅ Validation
   if (!form.value.name.trim()) {
@@ -565,6 +566,7 @@ const page = ref(1)
 const itemsPerPage = ref(10)
 const totalCandidates = ref(0)
 
+
 const fetchCandidates = async () => {
   try {
     const res = await api.get('/candidates', {
@@ -573,25 +575,17 @@ const fetchCandidates = async () => {
         page: page.value,
         limit: itemsPerPage.value
       }
-    })
+    });
 
-    candidates.value = res.data.candidates.reverse()  // ✅ Show latest created first
+    candidates.value = res.data.candidates
     totalCandidates.value = res.data.total
     filterCandidates()
-
-    // Update stage counts
-    const stages = ['Application', 'ManagerReview', 'Interview', 'JobOffer', 'Hired', 'Onboard']
-    const counts = Object.fromEntries(stages.map(s => [s, 0]))
-    for (const candidate of res.data.candidates) {
-      if (stages.includes(candidate.progress)) {
-        counts[candidate.progress] += 1
-      }
-    }
-    stageCounts.value = counts
   } catch (err) {
-    console.error('❌ Failed to fetch candidates:', err)
+    console.error('❌ Fetch failed:', err)
   }
 }
+
+
 
 
 const fetchDepartments = async () => {
@@ -739,6 +733,11 @@ watch([jobRequisitionOptions, editingCandidateId], ([jobs, id]) => {
     }
   }
 })
+
+watch([page, itemsPerPage], () => {
+  fetchCandidates();
+});
+
 const exportToExcel = () => {
   const rows = filteredCandidates.value.map(c => ({
     'Candidate ID': c.candidateId,

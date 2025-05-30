@@ -48,5 +48,8 @@ router.get('/requisition/:requisitionId/active-offers', candidateController.getA
 // Check if offer/hire already exists for a requisition (boolean)
 router.get('/requisition/:requisitionId/offer-check', candidateController.checkActiveOffers);
 
+router.get('/candidates', candidateController.getCandidates);
+
+
 // ✅ Export router
 module.exports = router;

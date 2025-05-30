@@ -161,11 +161,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="c in filteredCandidates"
-              :key="c._id"
-              :class="{ 'highlighted-row': c._id === highlightedCandidateId }"
-            >
+            <tr v-for="c in filteredCandidates" :key="c._id">
               <td>{{ c.candidateId }}</td>
               <td>{{ c.jobRequisitionId?.jobRequisitionId || '-' }}</td>
               <td>{{ c.jobRequisitionId?.departmentId?.name || '-' }}</td>
@@ -219,37 +215,30 @@
           </tbody>
         </table>
       </div>
-      <!-- Pagination Controls -->
-<div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
-  <!-- Rows per page -->
-  <v-select
-    v-model="itemsPerPage"
-    :items="[10, 20, 30, 50, 100]"
-    label="Rows per page"
-    hide-details
-    density="compact"
-    variant="outlined"
-    style="max-width: 150px;"
-    @update:modelValue="() => { page = 1; fetchCandidates() }"
-  />
+      <div class="pagination-controls d-flex align-center justify-space-between mt-4 flex-wrap">
+        <!-- Rows per page -->
+        <v-select
+          v-model="itemsPerPage"
+          :items="[10, 20, 30, 50, 100]"
+          label="Rows per page"
+          hide-details
+          density="compact"
+          variant="outlined"
+          style="max-width: 150px;"
+        />
 
-  <!-- Pagination + page number -->
-  <div class="d-flex align-center gap-3">
-    <span class="page-counter">
-      Page {{ page }} / {{ totalPages }}
-    </span>
-
-    <v-pagination
-      v-model="page"
-      :length="totalPages"
-      @update:modelValue="fetchCandidates"
-      density="comfortable"
-    />
-  </div>
-</div>
-
-
-
+        <!-- Pagination + page number -->
+        <div class="d-flex align-center gap-3">
+          <span class="page-counter">
+            Page {{ page }} / {{ totalPages }}
+          </span>
+          <v-pagination
+            v-model="page"
+            :length="totalPages"
+            density="comfortable"
+          />
+        </div>
+      </div>
       <!-- Stage Dialog -->
       <v-dialog v-model="stageDialog.show" max-width="400">
         <v-card class="pa-4">
@@ -341,6 +330,8 @@ const sources = [
 ]
 
 
+
+
 const decisions = ['Hired', 'Candidate in Process', 'Candidate Refusal', 'Not Hired']
 
 const form = ref({
@@ -413,7 +404,7 @@ const loadCandidatesBySubType = async (subType) => {
   activeSubType.value = subType
   try {
     const res = await api.get(`/candidates?type=Blue%20Collar&subType=${subType}`)
-    candidates.value = res.data.reverse()
+    candidates.value = res.data.candidates.slice().reverse(); // ✅ correct key
     filterCandidates()
   } catch (err) {
     await Swal.fire({
@@ -696,7 +687,9 @@ const filterCandidates = () => {
   })
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(totalCandidates.value / itemsPerPage.value)))
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(totalCandidates.value / itemsPerPage.value))
+);
 
 const fetchCandidates = async () => {
   try {
@@ -707,19 +700,18 @@ const fetchCandidates = async () => {
         page: page.value,
         limit: itemsPerPage.value
       }
-    })
-    candidates.value = res.data.candidates.reverse()
-    totalCandidates.value = res.data.total
-    filterCandidates()
+    });
+
+    candidates.value = res.data.candidates;
+    filteredCandidates.value = res.data.candidates; // ✅ Add this
+    totalCandidates.value = res.data.total;
   } catch (err) {
-    await Swal.fire({
-      icon: 'error',
-      title: '❌ Failed to Fetch',
-      text: 'Could not load candidates.',
-      allowEnterKey: true
-    })
+    console.error('Fetch failed:', err);
   }
-}
+};
+
+
+
 
 
 
@@ -757,14 +749,16 @@ watch(() => route.query, () => {
   highlightedCandidateId.value = route.query.candidateId || null
   filterCandidates()
 })
+
+watch([page, itemsPerPage], () => {
+  fetchCandidates()
+})
 onMounted(() => {
   fetchJobRequisitions()
-
-  // ✅ Set initial subType
-  activeSubType.value = 'Sewer' // or 'Non-Sewer', or make it dynamic
-
+  activeSubType.value = 'Sewer'
   fetchCandidates()
 
+  // preselect
   const preselectedJobId = route.query.jobRequisitionId
   if (preselectedJobId) {
     showForm.value = true
@@ -772,6 +766,7 @@ onMounted(() => {
     updateRequisitionDetails(preselectedJobId)
   }
 })
+
 
 </script>
 
